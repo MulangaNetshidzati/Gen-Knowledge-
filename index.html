@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Letter Rush · multiplayer knowledge game</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        body {
+            min-height: 100vh;
+            background: linear-gradient(145deg, #0b1120 0%, #1a2639 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 1rem;
+        }
+
+        .game-container {
+            max-width: 1300px;
+            width: 100%;
+            background: rgba(18, 28, 46, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-radius: 2.5rem;
+            box-shadow: 0 30px 50px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.05);
+            padding: 2rem 2rem 2rem 2rem;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            transition: all 0.2s;
+        }
+
+        /* header area */
+        .top-bar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.8rem;
+            gap: 1.5rem;
+        }
+
+        .letter-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+        }
+
+        .letter-badge span {
+            font-size: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-weight: 500;
+            color: #9bb8da;
+        }
+
+        .current-letter {
+            background: linear-gradient(135deg, #facc15, #eab308);
+            color: #0b1120;
+            font-size: 3.5rem;
+            font-weight: 800;
+            width: 5.5rem;
+            height: 5.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 2rem;
+            box-shadow: 0 10px 20px -5px #eab30880, 0 0 0 2px #fde04780;
+            text-shadow: 0 2px 5px rgba(255, 255, 255, 0.3);
+            transition: 0.2s;
+        }
+
+        .timer-section {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 0.6rem 1.5rem 0.6rem 1.8rem;
+            border-radius: 4rem;
+            border: 1px solid #334155;
+        }
+
+        .timer-label {
+            color: #94a3b8;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+
+        .timer-value {
+            font-size: 2.8rem;
+            font-weight: 700;
+            color: #f8fafc;
+            min-width: 4.2rem;
+            text-align: center;
+            font-variant-numeric: tabular-nums;
+            line-height: 1;
+        }
+
+        .round-info {
+            background: #1e2b3f;
+            border-radius: 3rem;
+            padding: 0.7rem 1.8rem;
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            border: 1px solid #2d4059;
+            color: #b9d0f0;
+            font-weight: 500;
+        }
+
+        .round-info strong {
+            color: #facc15;
+            font-size: 1.3rem;
+            margin-right: 0.2rem;
+        }
+
+        /* main grid */
+        .game-grid {
+            display: grid;
+            grid-template-columns: 1fr 360px;
+            gap: 1.8rem;
+        }
+
+        /* input panel */
+        .input-panel {
+            background: rgba(12, 20, 34, 0.7);
+            border-radius: 2rem;
+            padding: 1.8rem;
+            border: 1px solid #263b55;
+            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.4);
+        }
+
+        .category-title {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            margin-bottom: 1.5rem;
+            color: #cbd5e1;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: 0.9rem;
+        }
+
+        .category-title i {
+            font-size: 1.4rem;
+            font-style: normal;
+        }
+
+        .inputs-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem 1.5rem;
+            margin-bottom: 1.8rem;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+
+        .input-group label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #8ba3c7;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        .input-group label span {
+            color: #facc15;
+            font-size: 1.1rem;
+        }
+
+        .input-group input {
+            background: #0e1a2b;
+            border: 1.5px solid #2a3f5e;
+            border-radius: 1rem;
+            padding: 0.9rem 1.2rem;
+            font-size: 1rem;
+            color: #f1f5f9;
+            font-weight: 500;
+            outline: none;
+            transition: 0.15s;
+            width: 100%;
+        }
+
+        .input-group input:focus {
+            border-color: #facc15;
+            box-shadow: 0 0 0 3px rgba(250, 204, 21, 0.2);
+            background: #0f1b2e;
+        }
+
+        .input-group input::placeholder {
+            color: #4b6589;
+            font-weight: 400;
+        }
+
+        .input-group input:disabled {
+            opacity: 0.6;
+            background: #0a121f;
+            border-color: #1e2b3f;
+            cursor: not-allowed;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-end;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            border: none;
+            font-weight: 600;
+            padding: 0.9rem 2rem;
+            border-radius: 2rem;
+            font-size: 1rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            transition: all 0.15s;
+            letter-spacing: 0.3px;
+            background: #1e2b3f;
+            color: #e2e8f0;
+            border: 1px solid #304a6b;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #facc15, #eab308);
+            color: #0b1120;
+            border: none;
+            box-shadow: 0 8px 18px -6px #eab308;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #fde047, #facc15);
+            transform: scale(1.02);
+        }
+
+        .btn-secondary:hover {
+            background: #253b58;
+            border-color: #4f6d94;
+        }
+
+        .btn:disabled {
+            opacity: 0.4;
+            pointer-events: none;
+            filter: grayscale(0.5);
+        }
+
+        /* leaderboard panel */
+        .leaderboard-panel {
+            background: rgba(12, 20, 34, 0.8);
+            border-radius: 2rem;
+            padding: 1.5rem 0.5rem 0.5rem 1.5rem;
+            border: 1px solid #263b55;
+            display: flex;
+            flex-direction: column;
+            max-height: 600px;
+        }
+
+        .leaderboard-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-right: 1rem;
+            margin-bottom: 1.2rem;
+        }
+
+        .leaderboard-header h3 {
+            color: #f1f5f9;
+            font-weight: 600;
+            font-size: 1.2rem;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .live-badge {
+            background: #1e2b3f;
+            border-radius: 2rem;
+            padding: 0.2rem 0.9rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #6ee7b7;
+            border: 1px solid #2d4b6e;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        .live-badge::before {
+            content: "●";
+            color: #4ade80;
+            font-size: 0.9rem;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.3; }
+            100% { opacity: 1; }
+        }
+
+        .player-list {
+            list-style: none;
+            overflow-y: auto;
+            padding-right: 0.8rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            max-height: 480px;
+        }
+
+        .player-list li {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            background: #111e30;
+            padding: 0.8rem 1rem;
+            border-radius: 1.2rem;
+            border: 1px solid #1f3149;
+            transition: 0.1s;
+            color: #cbd5e1;
+        }
+
+        .player-rank {
+            font-weight: 800;
+            color: #facc15;
+            width: 2rem;
+            text-align: center;
+            font-size: 1rem;
+        }
+
+        .player-name {
+            flex: 1;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .player-score {
+            font-weight: 700;
+            background: #1b2b41;
+            padding: 0.2rem 0.9rem;
+            border-radius: 2rem;
+            color: #facc15;
+            font-size: 0.95rem;
+            border: 1px solid #2f4562;
+        }
+
+        .player-list li.top1 {
+            background: #1f2e44;
+            border-color: #facc15;
+            box-shadow: 0 0 12px rgba(250, 204, 21, 0.2);
+        }
+
+        /* toast / message */
+        .message-toast {
+            background: #0d1a2b;
+            border-left: 5px solid #facc15;
+            padding: 0.8rem 1.2rem;
+            border-radius: 0.8rem;
+            color: #b9d0f0;
+            font-weight: 500;
+            margin-bottom: 1rem;
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            border: 1px solid #2c405e;
+        }
+
+        .feedback {
+            margin-top: 0.8rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem 1rem;
+            font-size: 0.9rem;
+        }
+
+        .feedback span.correct {
+            color: #4ade80;
+        }
+
+        .feedback span.duplicate {
+            color: #60a5fa;
+        }
+
+        .feedback span.wrong {
+            color: #f87171;
+        }
+
+        .category-sub {
+            font-size: 0.8rem;
+            color: #6c86a8;
+            margin-left: 0.3rem;
+        }
+
+        /* responsive */
+        @media (max-width: 950px) {
+            .game-grid {
+                grid-template-columns: 1fr;
+            }
+            .leaderboard-panel {
+                max-height: 400px;
+            }
+            .inputs-grid {
+                grid-template-columns: 1fr;
+            }
+            .game-container {
+                padding: 1.5rem;
+            }
+        }
+
+        @media (max-width: 550px) {
+            .top-bar {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .current-letter {
+                font-size: 2.5rem;
+                width: 4.2rem;
+                height: 4.2rem;
+            }
+        }
+
+        /* custom scroll */
+        .player-list::-webkit-scrollbar {
+            width: 6px;
+        }
+        .player-list::-webkit-scrollbar-track {
+            background: #0b1422;
+            border-radius: 10px;
+        }
+        .player-list::-webkit-scrollbar-thumb {
+            background: #2d4565;
+            border-radius: 10px;
+        }
+        .player-list::-webkit-scrollbar-thumb:hover {
+            background: #3f5c82;
+        }
+    </style>
+</head>
+<body>
+<div class="game-container">
+    <!-- top bar -->
+    <div class="top-bar">
+        <div class="letter-badge">
+            <span>Letter</span>
+            <div class="current-letter" id="currentLetterDisplay">?</div>
+        </div>
+        <div class="round-info">
+            <span>ROUND</span> <strong id="roundNumber">1</strong>
+        </div>
+        <div class="timer-section">
+            <div class="timer-label">TIME</div>
+            <div class="timer-value" id="timerDisplay">45</div>
+        </div>
+    </div>
+
+    <!-- main game grid -->
+    <div class="game-grid">
+        <!-- left side: inputs -->
+        <div class="input-panel">
+            <div class="category-title">
+                <i>📝</i> Your answers for letter <span id="letterHint" style="color:#facc15; margin-left:0.3rem;">?</span>
+            </div>
+
+            <div class="inputs-grid" id="inputsContainer">
+                <!-- dynamically filled by js: 6 categories -->
+            </div>
+
+            <div class="action-buttons">
+                <button class="btn btn-secondary" id="newRoundBtn" disabled>🔄 New Round</button>
+                <button class="btn btn-primary" id="submitBtn">✅ Submit Answers</button>
+            </div>
+
+            <div id="feedbackArea" class="feedback"></div>
+            <div id="messageBox" class="message-toast" style="margin-top: 1.2rem; display: none;"></div>
+        </div>
+
+        <!-- right side: leaderboard -->
+        <div class="leaderboard-panel">
+            <div class="leaderboard-header">
+                <h3>🏆 Leaderboard</h3>
+                <div class="live-badge">LIVE</div>
+            </div>
+            <ul class="player-list" id="leaderboardList">
+                <!-- filled dynamically -->
+            </ul>
+        </div>
+    </div>
+</div>
+
+<script>
+    // -----------------------------------------------
+    // GAME CONFIGURATION & STATE
+    // -----------------------------------------------
+    const CATEGORIES = [
+        { key: 'name', label: 'Name', icon: '👤', hint: 'e.g. Emma, David' },
+        { key: 'fruitVeg', label: 'Fruit / Veg', icon: '🍎', hint: 'Apple, Broccoli' },
+        { key: 'carBrand', label: 'Car Brand', icon: '🚗', hint: 'Audi, Ford' },
+        { key: 'animal', label: 'Animal', icon: '🦁', hint: 'Lion, Eagle' },
+        { key: 'place', label: 'Place / City / Country', icon: '🌍', hint: 'Paris, Japan' },
+        { key: 'object', label: 'Object / Thing', icon: '📦', hint: 'Table, Phone' }
+    ];
+
+    // Simulated online players (AI opponents)
+    const AI_PLAYERS = [
+        { id: 'ai1', name: 'Luna', avatar: '🌙' },
+        { id: 'ai2', name: 'Max', avatar: '⚡' },
+        { id: 'ai3', name: 'Zoe', avatar: '✨' },
+        { id: 'ai4', name: 'Kai', avatar: '🔥' },
+        { id: 'ai5', name: 'Mia', avatar: '🌸' }
+    ];
+
+    // Global state
+    let currentLetter = '';
+    let currentRound = 1;
+    let timeLeft = 45;
+    let timerInterval = null;
+    let roundActive = true;          // accepting submissions
+    let roundSubmitted = false;      // human already submitted this round
+    let leaderboard = [];            // { id, name, avatar, score, isHuman }
+
+    // Human player
+    const humanPlayer = {
+        id: 'human',
+        name: 'You',
+        avatar: '🧑',
+        score: 0,
+        isHuman: true
+    };
+
+    // Store this round's correct answers & player entries for scoring
+    let roundAnswers = {};           // { category: { answer, valid } } for human
+    let aiRoundAnswers = {};         // { aiId: { category: answer } }
+    let duplicateCounts = {};        // { category: { answer: count } }
+
+    // DOM elements
+    const currentLetterDisplay = document.getElementById('currentLetterDisplay');
+    const letterHint = document.getElementById('letterHint');
+    const timerDisplay = document.getElementById('timerDisplay');
+    const roundNumberEl = document.getElementById('roundNumber');
+    const inputsContainer = document.getElementById('inputsContainer');
+    const submitBtn = document.getElementById('submitBtn');
+    const newRoundBtn = document.getElementById('newRoundBtn');
+    const leaderboardList = document.getElementById('leaderboardList');
+    const feedbackArea = document.getElementById('feedbackArea');
+    const messageBox = document.getElementById('messageBox');
+
+    // -----------------------------------------------
+    // UTILS
+    // -----------------------------------------------
+    function randomLetter() {
+        const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        return letters[Math.floor(Math.random() * letters.length)];
+    }
+
+    // Generate AI answers for a given letter (simulated)
+    function generateAIAnswers(letter) {
+        const answers = {};
+        const lowercaseLetter = letter.toLowerCase();
+
+        // simple mocked dictionary per category
+        const mockDB = {
+            name: ['Anna', 'Adam', 'Alex', 'Amelia', 'Aaron', 'Bella', 'Ben', 'Blake', 'Carlos', 'Chloe', 'Diana', 'Derek', 'Elena', 'Ethan', 'Fiona', 'Felix', 'Grace', 'Gabriel', 'Hannah', 'Henry', 'Ivy', 'Isaac', 'Julia', 'Jack', 'Kevin', 'Kira', 'Liam', 'Lily', 'Mia', 'Noah', 'Olivia', 'Oscar', 'Paula', 'Peter', 'Quinn', 'Rachel', 'Ryan', 'Sophia', 'Sam', 'Tina', 'Tom', 'Ursula', 'Victor', 'Wendy', 'Xavier', 'Yara', 'Zara', 'Zane'],
+            fruitVeg: ['Apple', 'Apricot', 'Avocado', 'Banana', 'Broccoli', 'Carrot', 'Cherry', 'Cucumber', 'Date', 'Eggplant', 'Fig', 'Grape', 'Guava', 'Honeydew', 'Iceberg', 'Jackfruit', 'Kiwi', 'Lemon', 'Lime', 'Mango', 'Nectarine', 'Orange', 'Papaya', 'Quince', 'Raspberry', 'Spinach', 'Tomato', 'Ugli', 'Vanilla', 'Watermelon', 'Yam', 'Zucchini'],
+            carBrand: ['Audi', 'BMW', 'Bentley', 'Buick', 'Cadillac', 'Chevrolet', 'Chrysler', 'Dodge', 'Ferrari', 'Fiat', 'Ford', 'Genesis', 'GMC', 'Honda', 'Hyundai', 'Infiniti', 'Jaguar', 'Jeep', 'Kia', 'Lamborghini', 'Lexus', 'Lincoln', 'Mazda', 'Mercedes', 'Nissan', 'Opel', 'Peugeot', 'Porsche', 'Renault', 'Rolls-Royce', 'Saab', 'Tesla', 'Toyota', 'Volvo', 'VW'],
+            animal: ['Aardvark', 'Albatross', 'Alligator', 'Antelope', 'Baboon', 'Badger', 'Bat', 'Bear', 'Beaver', 'Bison', 'Camel', 'Cat', 'Cheetah', 'Chimpanzee', 'Deer', 'Dog', 'Dolphin', 'Donkey', 'Eagle', 'Elephant', 'Emu', 'Falcon', 'Ferret', 'Fox', 'Gazelle', 'Giraffe', 'Goat', 'Gorilla', 'Hamster', 'Hawk', 'Hedgehog', 'Hippo', 'Ibis', 'Iguana', 'Impala', 'Jackal', 'Jaguar', 'Kangaroo', 'Koala', 'Lemur', 'Leopard', 'Lion', 'Llama', 'Mole', 'Monkey', 'Narwhal', 'Newt', 'Ocelot', 'Octopus', 'Ostrich', 'Otter', 'Owl', 'Panda', 'Parrot', 'Penguin', 'Quail', 'Rabbit', 'Raccoon', 'Seal', 'Shark', 'Sheep', 'Snake', 'Tiger', 'Turtle', 'Urchin', 'Vulture', 'Walrus', 'Wolf', 'Xerus', 'Yak', 'Zebra'],
+            place: ['Amsterdam', 'Athens', 'Atlanta', 'Berlin', 'Boston', 'Cairo', 'Chicago', 'Delhi', 'Dubai', 'Edinburgh', 'Florence', 'Geneva', 'Hanoi', 'Helsinki', 'Istanbul', 'Jakarta', 'Kansas', 'Kyoto', 'Lisbon', 'London', 'Madrid', 'Melbourne', 'Nairobi', 'New York', 'Oslo', 'Oxford', 'Paris', 'Prague', 'Quebec', 'Rome', 'Seoul', 'Sydney', 'Tokyo', 'Toronto', 'Vienna', 'Venice', 'Warsaw', 'Washington', 'Zurich'],
+            object: ['Anchor', 'Antenna', 'Apron', 'Backpack', 'Balloon', 'Basket', 'Bottle', 'Camera', 'Candle', 'Chair', 'Clock', 'Cup', 'Desk', 'Doll', 'Door', 'Eraser', 'Fan', 'Fork', 'Glass', 'Guitar', 'Hammer', 'Helmet', 'Iron', 'Jacket', 'Kettle', 'Key', 'Knife', 'Lamp', 'Laptop', 'Mirror', 'Mug', 'Notebook', 'Oven', 'Pen', 'Phone', 'Pillow', 'Quilt', 'Radio', 'Ruler', 'Scissors', 'Spoon', 'Table', 'Umbrella', 'Vase', 'Watch', 'Xylophone', 'Yarn', 'Zipper']
+        };
+
+        for (let cat of CATEGORIES) {
+            const key = cat.key;
+            const words = mockDB[key] || [];
+            const matched = words.filter(w => w.toLowerCase().startsWith(lowercaseLetter));
+            if (matched.length > 0) {
+                // pick random matched word, or sometimes a generic starting with letter (fail occasionally)
+                if (Math.random() < 0.85) {
+                    answers[key] = matched[Math.floor(Math.random() * matched.length)];
+                } else {
+                    // fallback: random word not starting with letter (will be invalid)
+                    answers[key] = words[Math.floor(Math.random() * words.length)] || letter + 'word';
+                }
+            } else {
+                // no match -> generate something that might not start with letter
+                const randomWord = words.length ? words[Math.floor(Math.random() * words.length)] : letter + 'thing';
+                answers[key] = randomWord;
+            }
+        }
+        return answers;
+    }
+
+    // check if a string starts with letter (case insensitive)
+    function startsWithLetter(str, letter) {
+        if (!str) return false;
+        return str.trim().toLowerCase().startsWith(letter.toLowerCase());
+    }
+
+    // -----------------------------------------------
+    // LEADERBOARD RENDER (live)
+    // -----------------------------------------------
+    function renderLeaderboard() {
+        // sort descending by score, then name
+        const sorted = [...leaderboard].sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
+
+        let html = '';
+        sorted.forEach((player, index) => {
+            const rank = index + 1;
+            const topClass = rank === 1 ? 'top1' : '';
+            html += `<li class="${topClass}">
+                <span class="player-rank">#${rank}</span>
+                <span class="player-name">${player.avatar || '👤'} ${player.name}</span>
+                <span class="player-score">${player.score} pts</span>
+            </li>`;
+        });
+        leaderboardList.innerHTML = html;
+    }
+
+    // initialise leaderboard with human + AI players
+    function initLeaderboard() {
+        leaderboard = [
+            { ...humanPlayer, score: 0 },
+            ...AI_PLAYERS.map(ai => ({ ...ai, score: 0, isHuman: false }))
+        ];
+        renderLeaderboard();
+    }
+
+    // update human score in leaderboard
+    function syncHumanScore() {
+        const entry = leaderboard.find(p => p.id === 'human');
+        if (entry) entry.score = humanPlayer.score;
+        renderLeaderboard();
+    }
+
+    // -----------------------------------------------
+    // BUILD INPUTS
+    // -----------------------------------------------
+    function buildInputs(letter) {
+        let html = '';
+        CATEGORIES.forEach(cat => {
+            html += `
+                <div class="input-group">
+                    <label>${cat.icon} ${cat.label} <span>${letter}…</span></label>
+                    <input type="text" id="input-${cat.key}" placeholder="${cat.hint}" autocomplete="off" ${!roundActive || roundSubmitted ? 'disabled' : ''}>
+                </div>
+            `;
+        });
+        inputsContainer.innerHTML = html;
+
+        // attach listeners to clear feedback
+        CATEGORIES.forEach(cat => {
+            const input = document.getElementById(`input-${cat.key}`);
+            if (input) {
+                input.addEventListener('input', () => {
+                    feedbackArea.innerHTML = '';
+                });
+            }
+        });
+    }
+
+    // get current human inputs
+    function getHumanInputs() {
+        const inputs = {};
+        CATEGORIES.forEach(cat => {
+            const field = document.getElementById(`input-${cat.key}`);
+            inputs[cat.key] = field ? field.value.trim() : '';
+        });
+        return inputs;
+    }
+
+    // disable / enable inputs
+    function setInputsEnabled(enabled) {
+        CATEGORIES.forEach(cat => {
+            const field = document.getElementById(`input-${cat.key}`);
+            if (field) field.disabled = !enabled;
+        });
+    }
+
+    // -----------------------------------------------
+    // TIMER
+    // -----------------------------------------------
+    function startTimer() {
+        if (timerInterval) clearInterval(timerInterval);
+        timeLeft = 45;
+        timerDisplay.textContent = timeLeft;
+
+        timerInterval = setInterval(() => {
+            timeLeft -= 1;
+            timerDisplay.textContent = timeLeft;
+
+            if (timeLeft <= 0) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+                endRoundDueToTime();
+            }
+        }, 1000);
+    }
+
+    function stopTimer() {
+        if (timerInterval) {
+            clearInterval(timerInterval);
+            timerInterval = null;
+        }
+    }
+
+    // -----------------------------------------------
+    // SCORING & ROUND END
+    // -----------------------------------------------
+    function computeDuplicateCounts() {
+        // count occurrences of each answer per category across all players (human + AI)
+        const counts = {};
+        CATEGORIES.forEach(cat => {
+            counts[cat.key] = {};
+        });
+
+        // collect all answers (human + AI)
+        const allEntries = [];
+
+        // human
+        const humanInputs = getHumanInputs();
+        CATEGORIES.forEach(cat => {
+            const val = humanInputs[cat.key]?.trim().toLowerCase();
+            if (val) {
+                allEntries.push({ category: cat.key, answer: val, playerId: 'human' });
+            }
+        });
+
+        // AI
+        for (let aiId in aiRoundAnswers) {
+            const aiAns = aiRoundAnswers[aiId];
+            CATEGORIES.forEach(cat => {
+                const val = aiAns[cat.key]?.trim().toLowerCase();
+                if (val) {
+                    allEntries.push({ category: cat.key, answer: val, playerId: aiId });
+                }
+            });
+        }
+
+        // count duplicates per category
+        allEntries.forEach(entry => {
+            const { category, answer } = entry;
+            if (!counts[category][answer]) counts[category][answer] = 0;
+            counts[category][answer] += 1;
+        });
+
+        duplicateCounts = counts;
+        return counts;
+    }
+
+    function endRound() {
+        if (!roundActive) return;
+        roundActive = false;
+        stopTimer();
+        setInputsEnabled(false);
+        submitBtn.disabled = true;
+
+        // Build feedback for human
+        const humanInputs = getHumanInputs();
+        let feedbackHtml = '';
+
+        // First, verify each category for human and compute points
+        CATEGORIES.forEach(cat => {
+            const raw = humanInputs[cat.key]?.trim();
+            const answer = raw ? raw : '';
+            const valid = answer && startsWithLetter(answer, currentLetter);
+            const categoryLabel = cat.label;
+            if (!answer) {
+                feedbackHtml += `<span class="wrong">✗ ${categoryLabel}: empty</span> `;
+            } else if (!valid) {
+                feedbackHtml += `<span class="wrong">✗ ${categoryLabel}: "${answer}" (wrong letter)</span> `;
+            } else {
+                feedbackHtml += `<span class="correct">✓ ${categoryLabel}: "${answer}"</span> `;
+            }
+        });
+
+        // Scoring for human
+        let humanPoints = 0;
+        CATEGORIES.forEach(cat => {
+            const raw = humanInputs[cat.key]?.trim();
+            const answer = raw ? raw.toLowerCase() : '';
+            const valid = answer && startsWithLetter(answer, currentLetter);
+            if (valid) {
+                // base points
+                humanPoints += 10;
+                // duplicate bonus
+                const dupCount = duplicateCounts[cat.key]?.[answer] || 0;
+                // dupCount includes human + others; if more than 1, human gets +5 for each duplicate (including itself? rule: "5 points each to those who have the same guess")
+                // The rule: players are rewarded 10 points if correct and 5 points each to those who have the same guess.
+                // Interpretation: if multiple players have same valid answer, each of them gets +5 extra for each other player with same answer.
+                // We'll implement: for each other player with same answer, +5. dupCount includes self, so (dupCount -1) * 5 extra.
+                const extra = Math.max(0, dupCount - 1) * 5;
+                humanPoints += extra;
+                if (extra > 0) {
+                    feedbackHtml += `<span class="duplicate">+${extra} dup bonus (${categoryLabel})</span> `;
+                }
+            }
+        });
+
+        humanPlayer.score += humanPoints;
+        syncHumanScore();
+
+        // --- AI scoring (simple simulation based on the same rules) ---
+        for (let aiId in aiRoundAnswers) {
+            const aiAns = aiRoundAnswers[aiId];
+            let aiPoints = 0;
+            CATEGORIES.forEach(cat => {
+                const raw = aiAns[cat.key]?.trim();
+                const answer = raw ? raw.toLowerCase() : '';
+                const valid = answer && startsWithLetter(answer, currentLetter);
+                if (valid) {
+                    aiPoints += 10;
+                    const dupCount = duplicateCounts[cat.key]?.[answer] || 0;
+                    const extra = Math.max(0, dupCount - 1) * 5;
+                    aiPoints += extra;
+                }
+            });
+            // update leaderboard entry
+            const aiEntry = leaderboard.find(p => p.id === aiId);
+            if (aiEntry) aiEntry.score += aiPoints;
+        }
+
+        renderLeaderboard();
+
+        // Show feedback for human
+        feedbackArea.innerHTML = feedbackHtml || '<span class="correct">No valid answers this round.</span>';
+        messageBox.style.display = 'block';
+        messageBox.innerHTML = `⏰ Round over! You earned <strong>${humanPoints} points</strong> this round.`;
+
+        // enable new round button
+        newRoundBtn.disabled = false;
+        roundSubmitted = true;
+
+        // Show leaderboard (already live)
+    }
+
+    function endRoundDueToTime() {
+        if (!roundActive) return;
+        // If human hasn't submitted, auto-submit with current inputs
+        if (!roundSubmitted) {
+            // simulate submission (without double penalty)
+            roundSubmitted = true; // mark to avoid re-submit
+            // Gather AI answers already exist
+            computeDuplicateCounts();
+            endRound(); // this will also disable inputs, score, etc.
+        } else {
+            // already submitted, just end round
+            endRound();
+        }
+    }
+
+    // -----------------------------------------------
+    // SUBMIT HANDLER
+    // -----------------------------------------------
+    function handleSubmit() {
+        if (!roundActive || roundSubmitted) return;
+
+        // validate inputs? no strict validation, but we require at least one non-empty? not necessary.
+        roundSubmitted = true;
+        submitBtn.disabled = true;
+        setInputsEnabled(false);
+        stopTimer();
+
+        // compute duplicate counts based on current human inputs + AI answers
+        computeDuplicateCounts();
+
+        // Now end round (scoring, feedback)
+        endRound();
+
+        // Additionally, prevent further edits
+    }
+
+    // -----------------------------------------------
+    // NEW ROUND
+    // -----------------------------------------------
+    function startNewRound() {
+        // reset flags
+        roundActive = true;
+        roundSubmitted = false;
+        stopTimer();
+
+        // new letter
+        currentLetter = randomLetter();
+        currentLetterDisplay.textContent = currentLetter;
+        letterHint.textContent = currentLetter;
+
+        // increment round counter
+        currentRound += 1;
+        roundNumberEl.textContent = currentRound;
+
+        // clear feedback & message
+        feedbackArea.innerHTML = '';
+        messageBox.style.display = 'none';
+
+        // generate AI answers for this round
+        aiRoundAnswers = {};
+        AI_PLAYERS.forEach(ai => {
+            aiRoundAnswers[ai.id] = generateAIAnswers(currentLetter);
+        });
+
+        // build fresh inputs (enabled)
+        buildInputs(currentLetter);
+        setInputsEnabled(true);
+
+        // reset duplicate counts
+        duplicateCounts = {};
+
+        // enable submit, disable new round
+        submitBtn.disabled = false;
+        newRoundBtn.disabled = true;
+
+        // start timer
+        startTimer();
+
+        // sync any UI
+        renderLeaderboard();
+    }
+
+    // initialise first round
+    function initGame() {
+        initLeaderboard();
+        currentLetter = randomLetter();
+        currentLetterDisplay.textContent = currentLetter;
+        letterHint.textContent = currentLetter;
+        currentRound = 1;
+        roundNumberEl.textContent = currentRound;
+
+        // generate AI answers
+        aiRoundAnswers = {};
+        AI_PLAYERS.forEach(ai => {
+            aiRoundAnswers[ai.id] = generateAIAnswers(currentLetter);
+        });
+
+        buildInputs(currentLetter);
+        setInputsEnabled(true);
+        roundActive = true;
+        roundSubmitted = false;
+
+        startTimer();
+
+        submitBtn.disabled = false;
+        newRoundBtn.disabled = true;
+
+        // attach event listeners
+        submitBtn.addEventListener('click', handleSubmit);
+        newRoundBtn.addEventListener('click', () => {
+            startNewRound();
+        });
+
+        // Also handle Enter key on inputs? skip
+    }
+
+    // Start the game
+    initGame();
+</script>
+</body>
+</html>
