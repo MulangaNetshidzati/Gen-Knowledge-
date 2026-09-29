@@ -261,6 +261,7 @@
     color: #facc15; font-size: 0.9rem; letter-spacing: 0.5px;
     text-transform: none; font-weight: 800;
   }
+  .cut-feedback-title .pts-earned.negative { color: #f87171; }
   .cut-feedback-list {
     display: grid; grid-template-columns: 1fr 1fr; gap: 0.35rem 0.7rem;
     font-size: 0.82rem;
@@ -274,12 +275,13 @@
   }
   @keyframes fbIn { to { opacity: 1; transform: translateY(0); } }
   .cut-fb-item.ok  { color: #4ade80; background: rgba(74,222,128,0.08); border-left: 3px solid #4ade80; }
-  .cut-fb-item.dup { color: #60a5fa; background: rgba(96,165,250,0.08); border-left: 3px solid #60a5fa; }
+  .cut-fb-item.dup { color: #fb923c; background: rgba(251,146,60,0.10); border-left: 3px solid #fb923c; }
   .cut-fb-item.bad { color: #f87171; background: rgba(248,113,113,0.08); border-left: 3px solid #f87171; }
   .cut-fb-item .fb-mark { font-weight: 800; }
   .cut-fb-item .fb-label { color: #93a7c4; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.5px; }
   .cut-fb-item .fb-ans { font-weight: 700; margin-left: auto; max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .cut-fb-item .fb-pts { font-weight: 800; color: #facc15; font-size: 0.78rem; }
+  .cut-fb-item.dup .fb-pts { color: #fb923c; }
 
   .cut-leaderboard-title {
     font-size: 0.78rem; text-transform: uppercase; letter-spacing: 1.5px;
@@ -552,10 +554,10 @@
         </div>
       </div>
       <div class="rule">
-        <span class="rule-emoji">🎯</span>
+        <span class="rule-emoji">⚠️</span>
         <div>
-          <strong>+5 bonus per matching answer</strong>
-          <p>If another player gives the same correct word, you both earn +5 extra for each match.</p>
+          <strong>−5 penalty per matching answer</strong>
+          <p>If another player gives the same correct word, you both lose 5 points for each match. Think of something original!</p>
         </div>
       </div>
       <div class="rule">
@@ -628,6 +630,9 @@
    · Fullscreen winner on all clients at game over
    · Categories: Name · Fruit/Veg · Car Brand · Animal · Place · Color
    · AUTO-CORRECT: typo-tolerant dictionary matching (Levenshtein)
+   · SCORING: +10 per correct answer, −5 penalty per matching answer
+     (if two or more players give the same correct word, each loses 5
+      points per other player who matched them)
    ========================================================= */
 
 const CATEGORIES = [
@@ -644,6 +649,7 @@ const TOTAL_ROUNDS = 26;
 const CUT_SCENE_MS = 5500;
 const RULES_DURATION = 10;
 const STRICT_MODE = true;
+const DUP_PENALTY = 5;   /* points removed per matching other player */
 
 /* ===================== WORD DATABASE ===================== */
 const WORD_DB = {
@@ -679,7 +685,6 @@ const WORD_DB = {
 
   /* ---------------- FRUIT / VEG ---------------- */
   fruit: new Set([
-    /* ---- FRUITS ---- */
     'abiu','acai','acerola','ackee','akebi','alligator apple','almond','ambarella','american persimmon','apple','apricot','araza','arhat','avocado',
     'bael','banana','barbados cherry','barberry','bergamot','betel nut','bilberry','black cherry','black currant','black mulberry','black sapote','blackberry','blood orange','blueberry','bolivian mountain coconut','boysenberry','brazil nut','breadfruit','buddha hand','bunya nut','burdekin plum','bush tomato',
     'cacao','cactus pear','calabash','camu camu','canary melon','cantaloupe','cape gooseberry','carambola','cashew apple','cassabanana','cempedak','chayote','che','cherimoya','cherry','chico','chokecherry','citron','clementine','cloudberry','coconut','coffee cherry','cola nut','cranberry','crowberry','cupuacu','currant','custard apple',
@@ -706,7 +711,6 @@ const WORD_DB = {
     'xigua','ximenia','xoconostle','xylocarp',
     'yali pear','yellow plum','yumberry','yuzu',
     'zebra melon','ziziphus',
-    /* ---- VEGETABLES ---- */
     'acorn squash','alfalfa sprout','amaranth','artichoke','arugula','asparagus','aubergine','azuki bean',
     'bamboo shoot','banana pepper','basil','beet','beetroot','bell pepper','bitter melon','bok choy','broccoli','broccoli rabe','brussels sprout','burdock','butternut squash',
     'cabbage','calabrese','carrot','cassava','cauliflower','celeriac','celery','chard','chickpea','chicory','chili pepper','chinese broccoli','chinese cabbage','chive','collard green','corn','corn salad','courgette','cress','cucumber',
@@ -792,7 +796,6 @@ const WORD_DB = {
 
   /* ---------------- PLACES: countries, provinces, states, cities ---------------- */
   place: new Set([
-    /* ---- COUNTRIES ---- */
     'afghanistan','albania','algeria','andorra','angola','antigua and barbuda','argentina','armenia','australia','austria','azerbaijan',
     'bahamas','bahrain','bangladesh','barbados','belarus','belgium','belize','benin','bhutan','bolivia','bosnia and herzegovina','botswana','brazil','brunei','bulgaria','burkina faso','burundi',
     'cabo verde','cambodia','cameroon','canada','cape verde','central african republic','chad','chile','china','colombia','comoros','congo','costa rica','croatia','cuba','cyprus','czech republic','czechia',
@@ -817,7 +820,6 @@ const WORD_DB = {
     'vanuatu','vatican city','venezuela','vietnam',
     'yemen',
     'zambia','zimbabwe',
-    /* ---- PROVINCES / STATES / REGIONS ---- */
     'alabama','alaska','alberta','anhui','arizona','arkansas','assam','baden-wurttemberg','bavaria','bihar','brandenburg','british columbia',
     'california','catalonia','chihuahua','colorado','connecticut',
     'delaware','dubai emirate',
@@ -827,7 +829,7 @@ const WORD_DB = {
     'hainan','haryana','hawaii','hebei','heilongjiang','henan','hokkaido','hubei','hunan',
     'idaho','illinois','indiana','iowa',
     'jalisco','jiangsu','jiangxi','jilin',
-    'kansas','karnataka','kentucky','kerala','kwaZulu-natal'.toLowerCase(),
+    'kansas','karnataka','kentucky','kerala','kwazulu-natal',
     'liaoning','limburg','lombardy','louisiana',
     'madhya pradesh','maine','maharashtra','manitoba','maryland','massachusetts','michigan','minnesota','mississippi','missouri','montana',
     'nebraska','nevada','new brunswick','new hampshire','new jersey','new mexico','new south wales','new york state','newfoundland','north carolina','north dakota','northern ireland','northern territory','northwest territories','nunavut',
@@ -840,7 +842,6 @@ const WORD_DB = {
     'uttar pradesh','utah',
     'vermont','victoria','virginia',
     'wales','washington state','west bengal','west virginia','western australia','wisconsin','wyoming','yukon','yunnan','zealand','zhejiang',
-    /* ---- CITIES ---- */
     'abidjan','abuja','accra','addis ababa','adelaide','algiers','almaty','amman','amsterdam','ankara','antwerp','athens','atlanta','auckland',
     'baghdad','baku','baltimore','bangalore','bangkok','barcelona','beijing','beirut','belfast','belgrade','berlin','bern','bilbao','birmingham','bogota','boston','bratislava','brazzaville','brisbane','brussels','bucharest','budapest','buenos aires',
     'cairo','calgary','canberra','cape town','caracas','casablanca','chennai','chicago','chisinau','copenhagen',
@@ -923,7 +924,6 @@ function shuffleArray(arr) {
 }
 
 /* ===================== AUTO-CORRECT ENGINE ===================== */
-/* Lazily-built index: DICT_INDEX[category][letter] = [words...] */
 const DICT_INDEX = {};
 
 function getLetterIndex(catKey, letter) {
@@ -936,7 +936,6 @@ function getLetterIndex(catKey, letter) {
   return DICT_INDEX[catKey][L];
 }
 
-/* Levenshtein distance with early bail-out */
 function levenshtein(a, b, maxDist) {
   const al = a.length, bl = b.length;
   if (Math.abs(al - bl) > maxDist) return maxDist + 1;
@@ -959,7 +958,6 @@ function levenshtein(a, b, maxDist) {
   return prev[bl];
 }
 
-/* Clean a raw user string */
 function cleanWord(raw) {
   return String(raw || '')
     .trim()
@@ -968,13 +966,12 @@ function cleanWord(raw) {
     .replace(/\s+/g, ' ');
 }
 
-/* Return the best dictionary match for a typo, or the cleaned word itself */
 function autocorrectWord(catKey, raw, letter) {
   const w = cleanWord(raw);
   if (!w) return '';
   const dict = WORD_DB[catKey];
   if (!dict) return w;
-  if (dict.has(w)) return w;                 // already perfect
+  if (dict.has(w)) return w;
 
   const candidates = getLetterIndex(catKey, letter);
   if (!candidates.length) return w;
@@ -996,7 +993,6 @@ function autocorrectWord(catKey, raw, letter) {
   return best || w;
 }
 
-/* Validate (expects an already-normalised lowercase word) */
 function isValidAnswer(categoryKey, word, letter) {
   if (!word || !word.trim()) return false;
   const w = cleanWord(word);
@@ -1383,7 +1379,6 @@ function renderGameUI() {
   renderLeaderboard();
 }
 
-/* Live auto-correct when a field loses focus */
 function autoFixField(catKey, input) {
   if (!input || input.disabled) return;
   const raw = input.value;
@@ -1500,6 +1495,7 @@ function endRoundAsHost() {
     .sort((a,b) => b.score - a.score);
   prevSorted.forEach((p, i) => { prevRanks[p.id] = i + 1; });
 
+  /* Count how many players gave each valid answer per category */
   const dupCount = {};
   CATEGORIES.forEach(c => dupCount[c.key] = {});
   room.players.forEach(p => {
@@ -1513,6 +1509,7 @@ function endRoundAsHost() {
     });
   });
 
+  /* Award +10 per correct, −5 per matching other player */
   room.players.forEach(p => {
     const ans = room.submissions[p.id] || {};
     let gained = 0;
@@ -1521,7 +1518,7 @@ function endRoundAsHost() {
       if (isValidAnswer(c.key, raw, room.letter)) {
         gained += 10;
         const others = (dupCount[c.key][cleanWord(raw)] || 1) - 1;
-        if (others > 0) gained += others * 5;
+        if (others > 0) gained -= others * DUP_PENALTY;   /* ← penalty */
       }
     });
     room.scores[p.id] = (room.scores[p.id] || 0) + gained;
@@ -1564,19 +1561,19 @@ function computeMyRoundSummary() {
     const raw = (myAns[c.key] || '').trim();
     const valid = isValidAnswer(c.key, raw, letter);
     let pts = 0;
-    let dupBonus = 0;
+    let dupPenalty = 0;
     if (valid) {
       pts = 10;
       const others = (dup[c.key]?.[cleanWord(raw)] || 1) - 1;
-      if (others > 0) dupBonus = others * 5;
-      pts += dupBonus;
+      if (others > 0) dupPenalty = others * DUP_PENALTY;
+      pts -= dupPenalty;                       /* ← subtract penalty */
     }
     total += pts;
 
     let status = 'bad';
     let mark = '✗';
     if (valid) {
-      if (dupBonus > 0) { status = 'dup'; mark = '★'; }
+      if (dupPenalty > 0) { status = 'dup'; mark = '−'; }
       else { status = 'ok'; mark = '✓'; }
     }
 
@@ -1586,7 +1583,7 @@ function computeMyRoundSummary() {
       answer: raw,
       valid,
       pts,
-      dupBonus,
+      dupPenalty,
       status,
       mark
     });
@@ -1599,7 +1596,9 @@ function showCutScene() {
   if (!room || !room.lastRound) return;
 
   const summary = computeMyRoundSummary();
-  $('cutPointsEarned').textContent = `+${summary.total} pts this round`;
+  const earnedEl = $('cutPointsEarned');
+  earnedEl.textContent = (summary.total >= 0 ? '+' : '') + summary.total + ' pts this round';
+  earnedEl.classList.toggle('negative', summary.total < 0);
 
   const fbList = $('cutFeedbackList');
   fbList.innerHTML = '';
@@ -1608,9 +1607,14 @@ function showCutScene() {
     div.className = 'cut-fb-item ' + it.status;
     div.style.animationDelay = (0.35 + i * 0.08) + 's';
     const answerText = it.answer ? it.answer : '—';
-    const ptsText = it.pts > 0
-      ? (it.dupBonus > 0 ? `+${it.pts}` : '+10')
-      : '';
+
+    let ptsText = '';
+    if (it.valid) {
+      ptsText = it.dupPenalty > 0
+        ? `+10 −${it.dupPenalty}`
+        : '+10';
+    }
+
     div.innerHTML = `
       <span class="fb-mark">${it.mark}</span>
       <span class="fb-label">${it.label}</span>
