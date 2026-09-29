@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Letter Rush · Live Multiplayer By Mulanga Netsh</title>
+<title>Letter Rush · Live Multiplayer</title>
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <style>
   * { box-sizing: border-box; margin: 0; font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
@@ -111,7 +111,9 @@
     display: flex; align-items: center; justify-content: center;
     box-shadow: 0 10px 30px -10px #eab308;
   }
-  .timer-big { font-size: 2.4rem; font-weight: 800; color: #facc15; min-width: 3.4rem; text-align: center; }
+  .timer-big { font-size: 2.4rem; font-weight: 800; color: #facc15; min-width: 3.4rem; text-align: center; transition: color 0.2s; }
+  .timer-big.warn { color: #f87171; animation: pulse 0.8s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.5;} }
 
   .game-grid { display: grid; grid-template-columns: 1fr 340px; gap: 1.4rem; }
   @media (max-width: 950px) { .game-grid { grid-template-columns: 1fr; } }
@@ -154,11 +156,125 @@
     background: #101b2f; border: 1px solid #2b3f5d; color: #e6edf7;
     padding: 0.7rem 1.2rem; border-radius: 1rem; font-weight: 600;
     box-shadow: 0 20px 40px -15px rgba(0,0,0,0.7); opacity: 0; pointer-events: none;
-    transition: opacity 0.25s; z-index: 50;
+    transition: opacity 0.25s; z-index: 100;
   }
   .toast.show { opacity: 1; }
   ::-webkit-scrollbar { width: 6px; }
   ::-webkit-scrollbar-thumb { background: #2c4266; border-radius: 10px; }
+
+  /* ============ CUT SCENE (between rounds) ============ */
+  .cut-scene {
+    position: fixed; inset: 0; z-index: 80;
+    background: radial-gradient(circle at 50% 40%, rgba(15,25,45,0.98) 0%, rgba(5,8,15,0.99) 100%);
+    backdrop-filter: blur(20px);
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.45s ease;
+  }
+  .cut-scene.show { opacity: 1; pointer-events: auto; }
+  .cut-content {
+    max-width: 640px; width: 92%; padding: 2rem;
+    text-align: center;
+  }
+  .cut-title {
+    font-size: 2.4rem; font-weight: 800;
+    background: linear-gradient(135deg,#facc15,#f59e0b);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    margin-bottom: 0.4rem;
+    animation: cutPop 0.5s ease;
+  }
+  @keyframes cutPop { from { transform: scale(0.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .cut-sub {
+    color: #93a7c4; margin-bottom: 1.8rem; font-size: 1rem;
+    animation: cutPop 0.5s ease 0.1s backwards;
+  }
+  .cut-leaderboard {
+    list-style: none; display: flex; flex-direction: column; gap: 0.6rem;
+    text-align: left;
+  }
+  .cut-row {
+    display: flex; align-items: center; gap: 0.9rem;
+    background: #101b2f; border: 1px solid #1e314c; border-radius: 1.1rem;
+    padding: 0.85rem 1.1rem;
+    opacity: 0; transform: translateY(20px);
+    animation: cutRowIn 0.55s ease forwards;
+    transition: all 0.3s;
+  }
+  @keyframes cutRowIn { to { opacity: 1; transform: translateY(0); } }
+  .cut-row.top1 {
+    background: linear-gradient(135deg, #2a2208, #1a2a44);
+    border-color: #facc15;
+    box-shadow: 0 0 24px -6px rgba(250,204,21,0.5);
+  }
+  .cut-row .cut-rank { font-weight: 800; color: #facc15; width: 2.2rem; font-size: 1.05rem; }
+  .cut-row .cut-av { font-size: 1.7rem; }
+  .cut-row .cut-nm { flex: 1; font-weight: 700; font-size: 1.05rem; }
+  .cut-row .cut-sc { font-weight: 800; color: #facc15; font-size: 1.05rem; }
+  .cut-row .cut-mv { font-weight: 800; font-size: 0.85rem; padding: 0.15rem 0.55rem; border-radius: 1rem; min-width: 2.4rem; text-align: center; }
+  .cut-row .cut-mv.up { color: #4ade80; background: rgba(74,222,128,0.12); }
+  .cut-row .cut-mv.down { color: #f87171; background: rgba(248,113,113,0.12); }
+  .cut-row .cut-mv.same { color: #64748b; background: rgba(100,116,139,0.12); }
+
+  /* ============ WINNER SCREEN ============ */
+  .winner-screen {
+    position: fixed; inset: 0; z-index: 90;
+    background: radial-gradient(circle at 50% 30%, rgba(30,22,5,0.98) 0%, rgba(5,8,15,0.99) 100%);
+    backdrop-filter: blur(22px);
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.6s ease;
+    overflow-y: auto;
+    padding: 2rem 1rem;
+  }
+  .winner-screen.show { opacity: 1; pointer-events: auto; }
+  .winner-content {
+    max-width: 560px; width: 100%; padding: 1rem;
+    text-align: center;
+  }
+  .winner-trophy {
+    font-size: 6rem; line-height: 1;
+    animation: bounceTrophy 1.2s ease infinite alternate;
+    filter: drop-shadow(0 0 30px rgba(250,204,21,0.7));
+  }
+  @keyframes bounceTrophy { from { transform: translateY(0) scale(1); } to { transform: translateY(-10px) scale(1.05); } }
+  .winner-title {
+    font-size: 1.2rem; letter-spacing: 6px; color: #facc15;
+    font-weight: 800; margin: 0.6rem 0 1.5rem;
+  }
+  .winner-avatar {
+    font-size: 4.5rem; margin-bottom: 0.4rem;
+    animation: popAv 0.6s ease 0.2s backwards;
+  }
+  @keyframes popAv { from { transform: scale(0); } to { transform: scale(1); } }
+  .winner-name {
+    font-size: 2rem; font-weight: 800; color: #f8fafc;
+    margin-bottom: 0.3rem;
+  }
+  .winner-score {
+    font-size: 1.2rem; color: #facc15; font-weight: 700;
+    margin-bottom: 2rem;
+  }
+  .winner-sub {
+    color: #93a7c4; font-size: 0.85rem; text-transform: uppercase;
+    letter-spacing: 2px; margin-bottom: 0.8rem; font-weight: 700;
+  }
+  .winner-list { list-style: none; display: flex; flex-direction: column; gap: 0.5rem; text-align: left; margin-bottom: 1.5rem; }
+  .winner-row {
+    display: flex; align-items: center; gap: 0.8rem;
+    background: #101b2f; border: 1px solid #1e314c; border-radius: 1rem;
+    padding: 0.7rem 1rem;
+    opacity: 0; transform: translateX(-20px);
+    animation: winRowIn 0.4s ease forwards;
+  }
+  @keyframes winRowIn { to { opacity: 1; transform: translateX(0); } }
+  .winner-row.first {
+    background: linear-gradient(135deg, #2a2208, #1a2a44);
+    border-color: #facc15;
+  }
+  .winner-row .w-rk { font-weight: 800; color: #facc15; width: 1.8rem; text-align: center; }
+  .winner-row .w-av { font-size: 1.4rem; }
+  .winner-row .w-nm { flex: 1; font-weight: 700; }
+  .winner-row .w-sc { font-weight: 800; color: #facc15; }
 </style>
 </head>
 <body>
@@ -222,11 +338,11 @@
         <button class="btn btn-ghost" id="copyLinkBtn" style="margin-top: 0.8rem; width: 100%; justify-content: center;">📋 Copy Link</button>
 
         <div id="hostControls" class="hidden" style="margin-top: 1.4rem;">
-          <p class="muted" style="margin-bottom: 0.8rem;">You are the <strong style="color:#facc15;">Host</strong>.</p>
-          <button class="btn btn-primary" id="startGameBtn" style="width:100%; justify-content:center;" disabled>⏳ Waiting…</button>
+          <p class="muted" style="margin-bottom: 0.8rem;">You are the <strong style="color:#facc15;">Host</strong>. Start when everyone is ready.</p>
+          <button class="btn btn-primary" id="startGameBtn" style="width:100%; justify-content:center;" disabled>▶ Start Game</button>
         </div>
         <div id="guestControls" class="hidden" style="margin-top: 1.4rem;">
-          <p class="muted">Waiting for the host to be ready… game starts automatically when 2+ players have joined ✨</p>
+          <p class="muted">Waiting for the host to start… ✨</p>
         </div>
       </div>
     </div>
@@ -236,12 +352,12 @@
   <section id="screen-game" class="screen hidden">
     <div class="top-bar">
       <div class="row">
-        <span class="pill">Round <span id="roundNum">1</span></span>
+        <span class="pill">Round <span id="roundNum">1</span> / <span id="totalRounds">26</span></span>
         <div class="big-letter" id="letterDisplay">?</div>
       </div>
       <div class="row">
         <span class="pill">⏱</span>
-        <div class="timer-big" id="timerDisplay">45</div>
+        <div class="timer-big" id="timerDisplay">60</div>
       </div>
       <div class="row">
         <span class="pill" id="playersInline">👥 0 players</span>
@@ -268,15 +384,39 @@
   </section>
 
 </div>
+
+<!-- ========== CUT SCENE OVERLAY ========== -->
+<div class="cut-scene" id="cutScene">
+  <div class="cut-content">
+    <div class="cut-title" id="cutTitle">Round Complete</div>
+    <div class="cut-sub" id="cutSub">Next round starting…</div>
+    <ul class="cut-leaderboard" id="cutLeaderboard"></ul>
+  </div>
+</div>
+
+<!-- ========== WINNER OVERLAY ========== -->
+<div class="winner-screen" id="winnerScreen">
+  <div class="winner-content">
+    <div class="winner-trophy">🏆</div>
+    <div class="winner-title">GAME OVER</div>
+    <div class="winner-avatar" id="winnerAvatar">🦊</div>
+    <div class="winner-name" id="winnerName">Player</div>
+    <div class="winner-score" id="winnerScore">0 points</div>
+    <div class="winner-sub">Final Standings</div>
+    <ul class="winner-list" id="winnerList"></ul>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
 /* =========================================================
    LETTER RUSH — WebRTC Multiplayer via PeerJS
-   · Host creates a room; guests join via link
-   · Nothing is stored anywhere
-   · Only real signed-in players appear on the leaderboard
-   · Game auto-starts as soon as 2+ players are in the room
+   · 26 unique letters (A–Z, shuffled, no repeats)
+   · 60-second strict timer per round
+   · Manual host start
+   · Animated cut scene between rounds
+   · Fullscreen winner on all clients at game over
    ========================================================= */
 
 const CATEGORIES = [
@@ -288,9 +428,9 @@ const CATEGORIES = [
   { key:'object', label:'Object / Thing',         icon:'📦' }
 ];
 const AVATARS = ['🦊','🐼','🐯','🦄','🐸','🐙','🦉','🐝','🦁','🐨','🐧','🐢'];
-const ROUND_TIME = 45;
-const BETWEEN_ROUNDS = 6;
-const TOTAL_ROUNDS = 5;
+const ROUND_TIME = 60;          // 1 minute
+const TOTAL_ROUNDS = 26;        // A–Z
+const CUT_SCENE_MS = 4500;      // duration of the between-round cut scene
 const STRICT_MODE = true;
 
 /* ===================== WORD DATABASE ===================== */
@@ -322,16 +462,13 @@ const WORD_DB = {
     'yolanda','yvonne',
     'zachary','zara','zoe'
   ]),
-
   fruit: new Set([
     'apple','apricot','avocado','banana','blackberry','blueberry','boysenberry','cantaloupe','cherry','clementine','coconut','cranberry','currant','date','dragonfruit','durian','elderberry','fig','gooseberry','grape','grapefruit','guava','honeydew','jackfruit','kiwi','kumquat','lemon','lime','lychee','mango','melon','mulberry','nectarine','olive','orange','papaya','passionfruit','peach','pear','persimmon','pineapple','plantain','plum','pomegranate','pomelo','quince','raspberry','starfruit','strawberry','tangerine','watermelon',
     'artichoke','arugula','asparagus','beet','beetroot','bell pepper','bok choy','broccoli','brussels sprout','cabbage','carrot','cauliflower','celery','chard','chickpea','chili','collard','corn','cucumber','daikon','eggplant','endive','fennel','garlic','ginger','green bean','kale','kohlrabi','leek','lentil','lettuce','mushroom','mustard green','okra','onion','parsnip','pea','pepper','potato','pumpkin','radish','rhubarb','rutabaga','shallot','spinach','squash','sweet potato','swiss chard','tomato','turnip','yam','zucchini'
   ]),
-
   car: new Set([
     'acura','alfa romeo','alpine','aston martin','audi','bentley','bmw','bugatti','buick','cadillac','chevrolet','chrysler','citroen','dacia','daewoo','daihatsu','dodge','ferrari','fiat','ford','genesis','gmc','honda','hummer','hyundai','infiniti','isuzu','jaguar','jeep','kia','koenigsegg','lamborghini','lancia','land rover','lexus','lincoln','lotus','maserati','maybach','mazda','mclaren','mercedes','mercedes-benz','mercury','mini','mitsubishi','nissan','opel','pagani','peugeot','plymouth','pontiac','porsche','ram','renault','rolls-royce','rover','saab','saleen','saturn','scion','seat','skoda','smart','ssangyong','subaru','suzuki','tesla','toyota','triumph','vauxhall','volkswagen','volvo'
   ]),
-
   animal: new Set([
     'aardvark','albatross','alligator','alpaca','anaconda','angelfish','ant','anteater','antelope','armadillo','axolotl',
     'baboon','badger','barracuda','bat','bear','beaver','bee','beetle','bison','blackbird','bluebird','bluejay','boar','bobcat','buffalo','butterfly','buzzard',
@@ -359,12 +496,10 @@ const WORD_DB = {
     'yak',
     'zebra'
   ]),
-
   place: new Set([
     'afghanistan','albania','algeria','andorra','angola','argentina','armenia','australia','austria','azerbaijan','bahamas','bahrain','bangladesh','barbados','belarus','belgium','belize','benin','bhutan','bolivia','bosnia','botswana','brazil','brunei','bulgaria','burkina faso','burundi','cambodia','cameroon','canada','chad','chile','china','colombia','congo','costa rica','croatia','cuba','cyprus','czechia','denmark','djibouti','dominica','ecuador','egypt','eritrea','estonia','ethiopia','fiji','finland','france','gabon','gambia','georgia','germany','ghana','greece','grenada','guatemala','guinea','guyana','haiti','honduras','hungary','iceland','india','indonesia','iran','iraq','ireland','israel','italy','jamaica','japan','jordan','kazakhstan','kenya','kiribati','kuwait','kyrgyzstan','laos','latvia','lebanon','lesotho','liberia','libya','liechtenstein','lithuania','luxembourg','madagascar','malawi','malaysia','maldives','mali','malta','marshall islands','mauritania','mauritius','mexico','micronesia','moldova','monaco','mongolia','montenegro','morocco','mozambique','myanmar','namibia','nauru','nepal','netherlands','new zealand','nicaragua','niger','nigeria','north korea','norway','oman','pakistan','palau','panama','papua new guinea','paraguay','peru','philippines','poland','portugal','qatar','romania','russia','rwanda','samoa','saudi arabia','senegal','serbia','seychelles','sierra leone','singapore','slovakia','slovenia','solomon islands','somalia','south africa','south korea','south sudan','spain','sri lanka','sudan','suriname','sweden','switzerland','syria','taiwan','tajikistan','tanzania','thailand','timor-leste','togo','tonga','trinidad','tunisia','turkey','turkmenistan','tuvalu','uganda','ukraine','united arab emirates','united kingdom','united states','uruguay','uzbekistan','vanuatu','vatican city','venezuela','vietnam','yemen','zambia','zimbabwe',
     'abidjan','abuja','accra','addis ababa','adelaide','algiers','almaty','amman','amsterdam','ankara','antwerp','athens','atlanta','auckland','baghdad','baku','baltimore','bangalore','bangkok','barcelona','beijing','beirut','belfast','belgrade','berlin','bern','bilbao','birmingham','bogota','boston','bratislava','brazzaville','brisbane','brussels','bucharest','budapest','buenos aires','cairo','calgary','canberra','cape town','caracas','casablanca','chennai','chicago','chisinau','copenhagen','dakar','dallas','damascus','dar es salaam','delhi','denver','dhaka','doha','dubai','dublin','durban','edinburgh','frankfurt','gaborone','geneva','glasgow','guadalajara','guangzhou','hamburg','hanoi','harare','havana','helsinki','hong kong','houston','hyderabad','islamabad','istanbul','jakarta','jeddah','johannesburg','kabul','kampala','karachi','kathmandu','khartoum','kiev','kigali','kingston','kinshasa','kolkata','kuala lumpur','kyiv','lagos','lahore','las vegas','lima','lisbon','ljubljana','london','los angeles','luanda','lusaka','luxembourg','lyon','madrid','manila','maputo','marseille','mexico city','miami','milan','minsk','mogadishu','monrovia','monterrey','montreal','moscow','mumbai','munich','nairobi','naples','new york','nice','nizhny novgorod','osaka','oslo','ottawa','paris','perth','philadelphia','phnom penh','phoenix','podgorica','portland','prague','pretoria','pyongyang','quito','rabat','reykjavik','riga','rio de janeiro','riyadh','rome','saint petersburg','san diego','san francisco','san jose','san salvador','santiago','sao paulo','sapporo','sarajevo','seattle','seoul','shanghai','shenzhen','singapore','skopje','sofia','stockholm','suva','sydney','tallinn','tashkent','tbilisi','tehran','tel aviv','the hague','tirana','tokyo','toronto','tripoli','tunis','ulaanbaatar','valencia','vancouver','vienna','vientiane','vilnius','warsaw','washington','wellington','windhoek','yamoussoukro','yaounde','yerevan','zagreb','zurich'
   ]),
-
   object: new Set([
     'air conditioner','alarm clock','anchor','antenna','apron','ashtray','backpack','bag','ball','balloon','bandage','basket','battery','bed','bench','bicycle','binder','blender','book','bookcase','boot','bottle','bowl','box','bracelet','broom','brush','bucket','button','cabinet','calculator','camera','candle','cane','carpet','cart','cd','chair','chalk','charger','clock','coat','comb','computer','controller','cord','couch','crayon','cup','curtain','cushion','desk','dictionary','dish','door','dresser','drill','drum','dvd','earphone','eraser','fan','fence','file','flag','flashlight','flute','fork','frame','fridge','furniture','guitar','hammer','hanger','hat','headphone','helmet','jacket','jar','jeans','jewelry','kettle','key','keyboard','keychain','knife','ladder','lamp','laptop','lens','letter','lighter','lock','magnet','map','marker','mask','mat','microphone','mirror','mixer','monitor','mop','mouse','mug','nail','necklace','needle','notebook','oven','padlock','paint','pan','paper','pen','pencil','phone','photo','piano','pillow','pipe','plate','plug','pot','purse','quilt','radio','razor','recorder','remote','ring','rope','rug','ruler','sandwich','saw','scarf','scissors','screwdriver','seat','shampoo','shoe','shovel','speaker','sponge','spoon','stamp','stapler','stove','straw','sunglasses','table','tablet','tape','teapot','teddy bear','television','tent','tie','timer','toaster','toothbrush','towel','toy','tray','trumpet','umbrella','vacuum','vase','wallet','watch','whistle','window','wrench','zipper'
   ])
@@ -377,14 +512,20 @@ function toast(t, ms=1800) {
   const el = $('toast'); el.textContent = t; el.classList.add('show');
   clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove('show'), ms);
 }
-function randomLetter(){ return 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[Math.floor(Math.random()*26)]; }
 function escapeHtml(s){ return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 function randomRoomCode(){
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let c = ''; for (let i=0;i<6;i++) c += chars[Math.floor(Math.random()*chars.length)];
   return c;
 }
-
+function shuffleArray(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
 function isValidAnswer(categoryKey, word, letter) {
   if (!word || !word.trim()) return false;
   const w = word.trim().toLowerCase();
@@ -404,11 +545,9 @@ let peer = null;
 let hostConn = null;
 let guestConns = new Map();
 let timerInterval = null;
-let betweenInterval = null;
 let mySubmissionMade = false;
 let pickedAvatar = AVATARS[0];
 let pickedMode = 'host';
-let autoStartScheduled = false;
 
 /* ===================== SIGN-IN UI ===================== */
 (function buildAvatars(){
@@ -459,6 +598,7 @@ function hostRoom() {
       hostId: me.id,
       started: false,
       round: 0,
+      letterQueue: [],
       letter: null,
       players: [{ id: me.id, name: me.name, avatar: me.avatar }],
       scores: { [me.id]: 0 },
@@ -466,7 +606,6 @@ function hostRoom() {
     };
 
     showConnBanner('Opening room…');
-
     peer = new Peer('letterrush-' + code, { debug: 1 });
 
     peer.on('open', () => {
@@ -494,7 +633,6 @@ function hostRoom() {
           return;
         }
         guestConns.set(conn.peer, conn);
-
         conn.on('data', data => handleGuestMessage(conn, data));
         conn.on('close', () => {
           const guestId = conn.metadata?.id;
@@ -581,24 +719,11 @@ function handleGuestMessage(conn, data) {
       broadcastToGuests({ type: 'roomUpdate', room });
       renderLobby();
       toast(data.player.name + ' joined');
-
-      // ✅ AUTO-START when 2+ real players are in
-      if (room.players.length >= 2 && !room.started && !autoStartScheduled) {
-        autoStartScheduled = true;
-        setTimeout(() => {
-          if (!room.started && room.players.length >= 2) {
-            startGameAsHost();
-          }
-          autoStartScheduled = false;
-        }, 1200);
-      }
       break;
     }
     case 'submission': {
       room.submissions[data.playerId] = data.answers;
-      if (Object.keys(room.submissions).length === room.players.length) {
-        endRoundAsHost();
-      }
+      // NOTE: no early round-end here — round always ends on the 60s timer
       break;
     }
   }
@@ -628,16 +753,18 @@ function handleHostMessage(data) {
     case 'roundEnded':
       room = data.room;
       renderGameUI();
-      showBetweenRounds();
+      showCutScene();
       break;
     case 'nextRound':
       room = data.room;
+      hideCutScene();
       mySubmissionMade = false;
       renderGameUI();
       startRoundTimer();
       break;
     case 'gameOver':
       room = data.room;
+      hideCutScene();
       showGameOver();
       break;
   }
@@ -674,15 +801,14 @@ function renderLobby() {
     $('hostControls').classList.remove('hidden');
     $('guestControls').classList.add('hidden');
     $('lobbyStatusBanner').textContent = room.players.length < 2
-      ? '⏳ Waiting for at least 1 more player… (game starts automatically)'
-      : `🚀 Starting in a moment — ${room.players.length} players in the room`;
-    $('startGameBtn').disabled = true;
-    $('startGameBtn').textContent = room.players.length < 2 ? '⏳ Waiting…' : '▶ Auto-starting…';
+      ? '⏳ Waiting for at least 1 more player to join…'
+      : `✅ Ready — ${room.players.length} players. Click Start Game when you like.`;
+    $('startGameBtn').disabled = room.players.length < 2;
+    $('startGameBtn').textContent = '▶ Start Game';
   } else {
     $('hostControls').classList.add('hidden');
     $('guestControls').classList.remove('hidden');
-    $('lobbyStatusBanner').textContent =
-      '⏳ Game starts automatically when 2+ players have joined.';
+    $('lobbyStatusBanner').textContent = '⏳ Waiting for the host to start…';
   }
 }
 
@@ -697,17 +823,18 @@ $('leaveLobbyBtn').onclick = () => {
   showScreen('signin');
 };
 
-/* ===================== START GAME (host) ===================== */
-function startGameAsHost() {
+/* ===================== START GAME (host, manual) ===================== */
+$('startGameBtn').onclick = () => {
   if (!me.isHost || !room || room.started) return;
   room.started = true;
   room.round = 1;
-  room.letter = randomLetter();
+  room.letterQueue = shuffleArray('ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''));
+  room.letter = room.letterQueue[0];
   room.submissions = {};
   room.players.forEach(p => { room.scores[p.id] = 0; });
   broadcastToGuests({ type: 'gameStarted', room });
   enterGameScreen();
-}
+};
 
 /* ===================== GAME UI ===================== */
 function enterGameScreen() {
@@ -720,6 +847,7 @@ function enterGameScreen() {
 function renderGameUI() {
   if (!room) return;
   $('roundNum').textContent = room.round;
+  $('totalRounds').textContent = TOTAL_ROUNDS;
   $('letterDisplay').textContent = room.letter || '?';
   $('playersInline').textContent = `👥 ${room.players.length} players`;
 
@@ -764,19 +892,28 @@ function renderLeaderboard() {
   });
 }
 
-/* ===================== TIMER ===================== */
+/* ===================== TIMER (strict, 60s) ===================== */
 function startRoundTimer() {
   clearInterval(timerInterval);
   let t = ROUND_TIME;
-  $('timerDisplay').textContent = t;
+  const timerEl = $('timerDisplay');
+  timerEl.classList.remove('warn');
+  timerEl.textContent = t;
+
   timerInterval = setInterval(() => {
     t--;
-    $('timerDisplay').textContent = t;
+    timerEl.textContent = t;
+    if (t <= 10) timerEl.classList.add('warn');
+
     if (t <= 0) {
       clearInterval(timerInterval);
+      // Auto-submit whatever the player has typed
       if (!mySubmissionMade) submitAnswers(true);
+      // Host ends round after a brief grace so late submissions arrive
       if (me.isHost) {
-        setTimeout(() => { if (me.isHost && room && room.started) endRoundAsHost(); }, 2000);
+        setTimeout(() => {
+          if (me.isHost && room && room.started) endRoundAsHost();
+        }, 1200);
       }
     }
   }, 1000);
@@ -790,7 +927,7 @@ function submitAnswers(auto) {
   mySubmissionMade = true;
   $('submitBtn').disabled = true;
   $('waitingBanner').classList.remove('hidden');
-  $('waitingBanner').textContent = '⏳ Waiting for other players to submit…';
+  $('waitingBanner').textContent = '⏳ Locked in. Waiting for the timer to run out…';
   CATEGORIES.forEach(cat => { const el = $(`in-${cat.key}`); if (el) el.disabled = true; });
 
   const answers = {};
@@ -801,7 +938,6 @@ function submitAnswers(auto) {
 
   if (me.isHost) {
     room.submissions[me.id] = answers;
-    if (Object.keys(room.submissions).length === room.players.length) endRoundAsHost();
   } else {
     hostConn.send({ type: 'submission', playerId: me.id, answers });
   }
@@ -813,10 +949,16 @@ function endRoundAsHost() {
   if (!me.isHost || !room || !room.started) return;
   clearInterval(timerInterval);
 
+  // Save previous rankings (before this round's points)
+  const prevRanks = {};
+  const prevSorted = room.players
+    .map(p => ({ id: p.id, score: room.scores[p.id] || 0 }))
+    .sort((a,b) => b.score - a.score);
+  prevSorted.forEach((p, i) => { prevRanks[p.id] = i + 1; });
+
+  // Count duplicate VALID answers
   const dupCount = {};
   CATEGORIES.forEach(c => dupCount[c.key] = {});
-
-  // count duplicates (only VALID answers)
   room.players.forEach(p => {
     const ans = room.submissions[p.id] || {};
     CATEGORIES.forEach(c => {
@@ -828,7 +970,7 @@ function endRoundAsHost() {
     });
   });
 
-  // score everyone
+  // Award points
   room.players.forEach(p => {
     const ans = room.submissions[p.id] || {};
     let gained = 0;
@@ -842,93 +984,156 @@ function endRoundAsHost() {
     });
     room.scores[p.id] = (room.scores[p.id] || 0) + gained;
   });
-  room.lastRound = { dupCount };
+
+  // Compute new rankings
+  const newRanks = {};
+  const newSorted = room.players
+    .map(p => ({ id: p.id, score: room.scores[p.id] || 0 }))
+    .sort((a,b) => b.score - a.score);
+  newSorted.forEach((p, i) => { newRanks[p.id] = i + 1; });
+
+  room.lastRound = { dupCount, prevRanks, newRanks };
 
   broadcastToGuests({ type: 'roundEnded', room });
   renderGameUI();
-  showBetweenRounds();
-}
+  showCutScene();
 
-/* ===================== BETWEEN ROUNDS ===================== */
-function showBetweenRounds() {
-  renderLocalFeedback();
-  CATEGORIES.forEach(cat => { const el = $(`in-${cat.key}`); if (el) el.disabled = true; });
-  $('submitBtn').disabled = true;
-  $('waitingBanner').classList.remove('hidden');
-  $('waitingBanner').innerHTML = `📊 Round over! Next round in <strong id="cd">${BETWEEN_ROUNDS}</strong>s — check the leaderboard!`;
-
-  let cd = BETWEEN_ROUNDS;
-  clearInterval(betweenInterval);
-  betweenInterval = setInterval(() => {
-    cd--;
-    const el = $('cd'); if (el) el.textContent = cd;
-    if (cd <= 0) {
-      clearInterval(betweenInterval);
-      if (me.isHost) startNextRoundAsHost();
-    }
-  }, 1000);
-}
-
-function renderLocalFeedback() {
-  const myAns = room.submissions[me.id] || {};
-  const dup = room.lastRound?.dupCount || {};
-  const fb = $('feedbackArea');
-  fb.innerHTML = '';
-  CATEGORIES.forEach(c => {
-    const raw = (myAns[c.key] || '').trim();
-    const span = document.createElement('span');
-    if (!raw) {
-      span.className = 'bad';
-      span.textContent = `✗ ${c.label}: empty`;
-    } else if (!isValidAnswer(c.key, raw, room.letter)) {
-      span.className = 'bad';
-      const reason = raw.toLowerCase().startsWith(room.letter.toLowerCase())
-        ? 'not a real word'
-        : 'wrong letter';
-      span.textContent = `✗ ${c.label}: "${raw}" (${reason})`;
+  // Schedule the next step
+  const isLast = room.round >= TOTAL_ROUNDS;
+  setTimeout(() => {
+    if (!me.isHost || !room) return;
+    if (isLast) {
+      broadcastToGuests({ type: 'gameOver', room });
+      hideCutScene();
+      showGameOver();
     } else {
-      const v = raw.toLowerCase();
-      const others = (dup[c.key]?.[v] || 1) - 1;
-      span.className = others > 0 ? 'dup' : 'ok';
-      span.textContent = `✓ ${c.label}: "${raw}"${others > 0 ? ` · +${others*5} dup` : ''}`;
+      startNextRoundAsHost();
     }
-    fb.appendChild(span);
-  });
+  }, CUT_SCENE_MS + 300);
 }
 
+/* ===================== CUT SCENE ===================== */
+function showCutScene() {
+  if (!room || !room.lastRound) return;
+  const { prevRanks, newRanks } = room.lastRound;
+  const list = $('cutLeaderboard');
+  list.innerHTML = '';
+
+  const players = room.players.map(p => {
+    const prev = prevRanks[p.id] || 0;
+    const now  = newRanks[p.id] || 0;
+    return {
+      ...p,
+      score: room.scores[p.id] || 0,
+      prev,
+      now,
+      move: prev - now   // positive = moved up
+    };
+  }).sort((a,b) => a.now - b.now);
+
+  players.forEach((p, i) => {
+    const li = document.createElement('li');
+    li.className = 'cut-row' + (i === 0 ? ' top1' : '');
+    li.style.animationDelay = (0.15 + i * 0.12) + 's';
+
+    let moveHtml = '<span class="cut-mv same">–</span>';
+    if (p.prev === 0) {
+      moveHtml = '<span class="cut-mv up">NEW</span>';
+    } else if (p.move > 0) {
+      moveHtml = `<span class="cut-mv up">↑${p.move}</span>`;
+    } else if (p.move < 0) {
+      moveHtml = `<span class="cut-mv down">↓${Math.abs(p.move)}</span>`;
+    }
+
+    li.innerHTML = `
+      <span class="cut-rank">#${p.now}</span>
+      <span class="cut-av">${p.avatar}</span>
+      <span class="cut-nm">${escapeHtml(p.name)}${p.id === me.id ? ' <span class="muted">(you)</span>' : ''}</span>
+      <span class="cut-sc">${p.score} pts</span>
+      ${moveHtml}
+    `;
+    list.appendChild(li);
+  });
+
+  const isLast = room.round >= TOTAL_ROUNDS;
+  $('cutTitle').textContent = isLast ? '🏁 FINAL ROUND COMPLETE' : `Round ${room.round} Complete`;
+  $('cutSub').textContent = isLast ? 'Calculating the winner…' : `Letter ${room.letter} — next letter coming up…`;
+
+  const overlay = $('cutScene');
+  overlay.classList.add('show');
+
+  // Auto-hide on guests (and as a safety on host if a message arrives late)
+  clearTimeout(overlay._t);
+  overlay._t = setTimeout(() => {
+    // Only auto-hide on guests — host hides via nextRound/gameOver flow
+    if (!me.isHost) overlay.classList.remove('show');
+  }, CUT_SCENE_MS);
+}
+function hideCutScene() {
+  const overlay = $('cutScene');
+  clearTimeout(overlay._t);
+  overlay.classList.remove('show');
+}
+
+/* ===================== NEXT ROUND (host) ===================== */
 function startNextRoundAsHost() {
   if (!me.isHost || !room) return;
   if (room.round >= TOTAL_ROUNDS) {
     broadcastToGuests({ type: 'gameOver', room });
+    hideCutScene();
     showGameOver();
     return;
   }
   room.round += 1;
-  room.letter = randomLetter();
+  room.letter = room.letterQueue[room.round - 1];
   room.submissions = {};
-  broadcastToGuests({ type: 'nextRound', room });
   mySubmissionMade = false;
+  hideCutScene();
+  broadcastToGuests({ type: 'nextRound', room });
   renderGameUI();
   startRoundTimer();
 }
 
-/* ===================== GAME OVER ===================== */
+/* ===================== GAME OVER (winner screen) ===================== */
 function showGameOver() {
   clearInterval(timerInterval);
-  clearInterval(betweenInterval);
-  const sorted = room.players.map(p => ({...p, score: room.scores[p.id] || 0}))
-    .sort((a,b) => b.score - a.score);
+  hideCutScene();
+
+  const sorted = room.players.map(p => ({
+    ...p,
+    score: room.scores[p.id] || 0
+  })).sort((a,b) => b.score - a.score || a.name.localeCompare(b.name));
+
   const winner = sorted[0];
-  CATEGORIES.forEach(cat => { const el = $(`in-${cat.key}`); if (el) el.disabled = true; });
-  $('submitBtn').classList.add('hidden');
-  $('waitingBanner').classList.remove('hidden');
-  $('waitingBanner').innerHTML = `🏁 <strong>Game over!</strong> Winner: <strong style="color:#facc15">${escapeHtml(winner.name)} ${winner.avatar}</strong> with ${winner.score} points.`;
-  renderLeaderboard();
+
+  $('winnerAvatar').textContent = winner.avatar;
+  $('winnerName').textContent = winner.name + (winner.id === me.id ? ' (YOU!)' : '');
+  $('winnerScore').textContent = winner.score + ' points';
+
+  const wl = $('winnerList');
+  wl.innerHTML = '';
+  sorted.forEach((p, i) => {
+    const li = document.createElement('li');
+    li.className = 'winner-row' + (i === 0 ? ' first' : '');
+    li.style.animationDelay = (0.4 + i * 0.1) + 's';
+    li.innerHTML = `
+      <span class="w-rk">#${i+1}</span>
+      <span class="w-av">${p.avatar}</span>
+      <span class="w-nm">${escapeHtml(p.name)}${p.id === me.id ? ' (you)' : ''}</span>
+      <span class="w-sc">${p.score}</span>
+    `;
+    wl.appendChild(li);
+  });
+
+  $('winnerScreen').classList.add('show');
 }
 
+/* ===================== LEAVE ===================== */
 $('leaveGameBtn').onclick = () => {
   if (peer) { peer.destroy(); peer = null; }
   hostConn = null; guestConns.clear(); room = null; me = null;
+  hideCutScene();
+  $('winnerScreen').classList.remove('show');
   showScreen('signin');
 };
 
