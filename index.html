@@ -1,972 +1,862 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Letter Rush · multiplayer knowledge game</title>
-    <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        }
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Letter Rush · Live Multiplayer</title>
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+  body {
+    min-height: 100vh;
+    background: radial-gradient(circle at 20% 0%, #14243f 0%, #0b1120 55%, #05080f 100%);
+    color: #e6edf7;
+    display: flex; justify-content: center; align-items: center;
+    padding: 1rem;
+  }
+  .app {
+    width: 100%; max-width: 1250px;
+    background: rgba(16, 26, 44, 0.82);
+    backdrop-filter: blur(18px);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 2rem;
+    box-shadow: 0 30px 60px rgba(0,0,0,0.6);
+    padding: 2rem;
+  }
+  h1 { font-size: 1.8rem; background: linear-gradient(135deg,#facc15,#f59e0b); -webkit-background-clip: text; background-clip: text; color: transparent; font-weight: 800; }
+  h3 { font-weight: 700; letter-spacing: 0.3px; }
+  .hidden { display: none !important; }
+  .muted { color: #93a7c4; font-size: 0.9rem; }
+  .row { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center; }
+  .screen { animation: fadeIn 0.25s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px);} to {opacity:1; transform:none;} }
 
-        body {
-            min-height: 100vh;
-            background: linear-gradient(145deg, #0b1120 0%, #1a2639 100%);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 1rem;
-        }
+  /* ---- SIGN IN ---- */
+  .signin-wrap { max-width: 620px; margin: 0 auto; padding: 1rem 0.5rem; }
+  .signin-wrap h1 { text-align: center; margin-bottom: 0.4rem; }
+  .signin-wrap p.sub { text-align: center; color: #93a7c4; margin-bottom: 1.6rem; }
+  .field { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1.4rem; }
+  .field label { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; color: #7d94b6; font-weight: 600; }
+  .field input {
+    background: #0d1729; border: 1.5px solid #273c5a; color: #f1f5f9;
+    border-radius: 1rem; padding: 0.9rem 1.1rem; font-size: 1rem; outline: none;
+  }
+  .field input:focus { border-color: #facc15; box-shadow: 0 0 0 3px rgba(250,204,21,0.15); }
 
-        .game-container {
-            max-width: 1300px;
-            width: 100%;
-            background: rgba(18, 28, 46, 0.75);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border-radius: 2.5rem;
-            box-shadow: 0 30px 50px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.05);
-            padding: 2rem 2rem 2rem 2rem;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            transition: all 0.2s;
-        }
+  .avatar-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 0.6rem; }
+  .avatar-option {
+    aspect-ratio: 1/1; display: flex; align-items: center; justify-content: center;
+    font-size: 2rem; background: #0d1729; border-radius: 1rem;
+    border: 2px solid #273c5a; cursor: pointer; transition: 0.15s; user-select: none;
+  }
+  .avatar-option:hover { transform: translateY(-2px); border-color: #3c5578; }
+  .avatar-option.selected { border-color: #facc15; background: #1b2a44; box-shadow: 0 0 0 3px rgba(250,204,21,0.2); }
 
-        /* header area */
-        .top-bar {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 1.8rem;
-            gap: 1.5rem;
-        }
+  .btn {
+    border: none; padding: 0.9rem 1.6rem; border-radius: 1rem;
+    font-weight: 700; font-size: 0.98rem; cursor: pointer; letter-spacing: 0.3px;
+    transition: 0.15s; display: inline-flex; align-items: center; gap: 0.5rem;
+  }
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+  .btn-primary { background: linear-gradient(135deg,#facc15,#eab308); color: #10151f; }
+  .btn-primary:not(:disabled):hover { transform: translateY(-1px); box-shadow: 0 10px 22px -10px #eab308; }
+  .btn-ghost { background: #16223a; color: #d5e0f1; border: 1px solid #2b3f5d; }
+  .btn-ghost:not(:disabled):hover { background: #1d2c48; }
+  .btn-big { font-size: 1.05rem; padding: 1rem 2rem; }
 
-        .letter-badge {
-            display: flex;
-            align-items: center;
-            gap: 0.8rem;
-        }
+  .mode-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; margin-bottom: 1rem; }
+  .mode-tab {
+    padding: 0.9rem; border-radius: 1rem; text-align: center; cursor: pointer;
+    background: #0d1729; border: 1.5px solid #273c5a; font-weight: 700; color: #93a7c4;
+    transition: 0.15s;
+  }
+  .mode-tab.active { background: #1b2a44; border-color: #facc15; color: #facc15; }
 
-        .letter-badge span {
-            font-size: 1rem;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            font-weight: 500;
-            color: #9bb8da;
-        }
+  /* ---- LOBBY ---- */
+  .lobby-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.6rem; }
+  @media (max-width: 780px) { .lobby-grid { grid-template-columns: 1fr; } }
+  .card { background: rgba(11,18,31,0.7); border: 1px solid #233856; border-radius: 1.4rem; padding: 1.4rem; }
+  .card h3 { margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; }
+  .players-list { list-style: none; display: flex; flex-direction: column; gap: 0.5rem; max-height: 320px; overflow-y: auto; padding-right: 0.3rem; }
+  .players-list li {
+    display: flex; align-items: center; gap: 0.8rem;
+    background: #101b2f; border: 1px solid #1e314c; border-radius: 1rem;
+    padding: 0.7rem 0.9rem;
+  }
+  .players-list li .av { font-size: 1.5rem; }
+  .players-list li .nm { flex: 1; font-weight: 600; }
+  .players-list li .tag { font-size: 0.7rem; padding: 0.15rem 0.55rem; border-radius: 1rem; background: #21344f; color: #93a7c4; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase; }
+  .players-list li.host .tag { background: #3a2f0d; color: #facc15; }
+  .players-list li.you { border-color: #facc15; }
 
-        .current-letter {
-            background: linear-gradient(135deg, #facc15, #eab308);
-            color: #0b1120;
-            font-size: 3.5rem;
-            font-weight: 800;
-            width: 5.5rem;
-            height: 5.5rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 2rem;
-            box-shadow: 0 10px 20px -5px #eab30880, 0 0 0 2px #fde04780;
-            text-shadow: 0 2px 5px rgba(255, 255, 255, 0.3);
-            transition: 0.2s;
-        }
+  .room-code {
+    font-family: ui-monospace, monospace; font-size: 1.6rem; letter-spacing: 4px;
+    background: #0d1729; padding: 0.6rem 1rem; border-radius: 0.8rem;
+    border: 1px dashed #3c5578; color: #facc15; font-weight: 800;
+  }
+  .link-box {
+    background: #0d1729; border: 1px solid #233856; border-radius: 0.9rem;
+    padding: 0.8rem 1rem; font-family: ui-monospace, monospace; font-size: 0.85rem;
+    color: #93a7c4; word-break: break-all; margin-top: 0.8rem;
+  }
+  .link-box strong { color: #facc15; }
 
-        .timer-section {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            background: rgba(0, 0, 0, 0.4);
-            padding: 0.6rem 1.5rem 0.6rem 1.8rem;
-            border-radius: 4rem;
-            border: 1px solid #334155;
-        }
+  /* ---- GAME ---- */
+  .top-bar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 1.3rem; }
+  .pill { background: #0d1729; padding: 0.5rem 1rem; border-radius: 2rem; border: 1px solid #233856; font-weight: 600; color: #cbd5e1; }
+  .big-letter {
+    font-size: 4rem; font-weight: 800; color: #0b1120;
+    background: linear-gradient(135deg,#facc15,#eab308);
+    width: 5.2rem; height: 5.2rem; border-radius: 1.4rem;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 10px 30px -10px #eab308;
+  }
+  .timer-big { font-size: 2.4rem; font-weight: 800; color: #facc15; min-width: 3.4rem; text-align: center; }
 
-        .timer-label {
-            color: #94a3b8;
-            font-weight: 500;
-            letter-spacing: 0.5px;
-        }
+  .game-grid { display: grid; grid-template-columns: 1fr 340px; gap: 1.4rem; }
+  @media (max-width: 950px) { .game-grid { grid-template-columns: 1fr; } }
 
-        .timer-value {
-            font-size: 2.8rem;
-            font-weight: 700;
-            color: #f8fafc;
-            min-width: 4.2rem;
-            text-align: center;
-            font-variant-numeric: tabular-nums;
-            line-height: 1;
-        }
+  .inputs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.9rem 1.1rem; }
+  @media (max-width: 620px) { .inputs-grid { grid-template-columns: 1fr; } }
+  .input-group label { font-size: 0.78rem; color: #8ba3c7; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 0.35rem; display: block; }
+  .input-group input {
+    width: 100%; background: #0d1729; border: 1.5px solid #273c5a; color: #f1f5f9;
+    border-radius: 0.9rem; padding: 0.8rem 1rem; font-size: 0.98rem; outline: none;
+  }
+  .input-group input:focus { border-color: #facc15; }
+  .input-group input:disabled { opacity: 0.55; }
 
-        .round-info {
-            background: #1e2b3f;
-            border-radius: 3rem;
-            padding: 0.7rem 1.8rem;
-            display: flex;
-            align-items: center;
-            gap: 0.8rem;
-            border: 1px solid #2d4059;
-            color: #b9d0f0;
-            font-weight: 500;
-        }
+  .leaderboard-list { list-style: none; display: flex; flex-direction: column; gap: 0.5rem; max-height: 500px; overflow-y: auto; padding-right: 0.3rem; }
+  .leaderboard-list li {
+    display: flex; align-items: center; gap: 0.7rem;
+    background: #101b2f; border: 1px solid #1e314c; border-radius: 1rem;
+    padding: 0.7rem 0.9rem;
+  }
+  .leaderboard-list li .rk { font-weight: 800; color: #facc15; width: 1.6rem; text-align: center; }
+  .leaderboard-list li .av { font-size: 1.35rem; }
+  .leaderboard-list li .nm { flex: 1; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .leaderboard-list li .sc { font-weight: 700; color: #facc15; background: #1b2a44; padding: 0.2rem 0.7rem; border-radius: 1rem; font-size: 0.85rem; border: 1px solid #2f4667; }
+  .leaderboard-list li.me { border-color: #facc15; background: #16243c; }
 
-        .round-info strong {
-            color: #facc15;
-            font-size: 1.3rem;
-            margin-right: 0.2rem;
-        }
+  .feedback { margin-top: 0.8rem; display: flex; flex-wrap: wrap; gap: 0.4rem 0.9rem; font-size: 0.9rem; }
+  .feedback .ok { color: #4ade80; }
+  .feedback .dup { color: #60a5fa; }
+  .feedback .bad { color: #f87171; }
 
-        /* main grid */
-        .game-grid {
-            display: grid;
-            grid-template-columns: 1fr 360px;
-            gap: 1.8rem;
-        }
+  .banner {
+    margin-top: 1rem; padding: 0.9rem 1.1rem; border-radius: 1rem;
+    background: #10233a; border-left: 4px solid #facc15; color: #cfe0f5;
+    font-size: 0.95rem;
+  }
 
-        /* input panel */
-        .input-panel {
-            background: rgba(12, 20, 34, 0.7);
-            border-radius: 2rem;
-            padding: 1.8rem;
-            border: 1px solid #263b55;
-            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.4);
-        }
-
-        .category-title {
-            display: flex;
-            align-items: center;
-            gap: 0.6rem;
-            margin-bottom: 1.5rem;
-            color: #cbd5e1;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            font-size: 0.9rem;
-        }
-
-        .category-title i {
-            font-size: 1.4rem;
-            font-style: normal;
-        }
-
-        .inputs-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 1rem 1.5rem;
-            margin-bottom: 1.8rem;
-        }
-
-        .input-group {
-            display: flex;
-            flex-direction: column;
-            gap: 0.4rem;
-        }
-
-        .input-group label {
-            font-size: 0.8rem;
-            font-weight: 600;
-            color: #8ba3c7;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            display: flex;
-            align-items: center;
-            gap: 0.3rem;
-        }
-
-        .input-group label span {
-            color: #facc15;
-            font-size: 1.1rem;
-        }
-
-        .input-group input {
-            background: #0e1a2b;
-            border: 1.5px solid #2a3f5e;
-            border-radius: 1rem;
-            padding: 0.9rem 1.2rem;
-            font-size: 1rem;
-            color: #f1f5f9;
-            font-weight: 500;
-            outline: none;
-            transition: 0.15s;
-            width: 100%;
-        }
-
-        .input-group input:focus {
-            border-color: #facc15;
-            box-shadow: 0 0 0 3px rgba(250, 204, 21, 0.2);
-            background: #0f1b2e;
-        }
-
-        .input-group input::placeholder {
-            color: #4b6589;
-            font-weight: 400;
-        }
-
-        .input-group input:disabled {
-            opacity: 0.6;
-            background: #0a121f;
-            border-color: #1e2b3f;
-            cursor: not-allowed;
-        }
-
-        .action-buttons {
-            display: flex;
-            gap: 1rem;
-            justify-content: flex-end;
-            flex-wrap: wrap;
-        }
-
-        .btn {
-            border: none;
-            font-weight: 600;
-            padding: 0.9rem 2rem;
-            border-radius: 2rem;
-            font-size: 1rem;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-            cursor: pointer;
-            transition: all 0.15s;
-            letter-spacing: 0.3px;
-            background: #1e2b3f;
-            color: #e2e8f0;
-            border: 1px solid #304a6b;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #facc15, #eab308);
-            color: #0b1120;
-            border: none;
-            box-shadow: 0 8px 18px -6px #eab308;
-        }
-
-        .btn-primary:hover {
-            background: linear-gradient(135deg, #fde047, #facc15);
-            transform: scale(1.02);
-        }
-
-        .btn-secondary:hover {
-            background: #253b58;
-            border-color: #4f6d94;
-        }
-
-        .btn:disabled {
-            opacity: 0.4;
-            pointer-events: none;
-            filter: grayscale(0.5);
-        }
-
-        /* leaderboard panel */
-        .leaderboard-panel {
-            background: rgba(12, 20, 34, 0.8);
-            border-radius: 2rem;
-            padding: 1.5rem 0.5rem 0.5rem 1.5rem;
-            border: 1px solid #263b55;
-            display: flex;
-            flex-direction: column;
-            max-height: 600px;
-        }
-
-        .leaderboard-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding-right: 1rem;
-            margin-bottom: 1.2rem;
-        }
-
-        .leaderboard-header h3 {
-            color: #f1f5f9;
-            font-weight: 600;
-            font-size: 1.2rem;
-            letter-spacing: 0.5px;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .live-badge {
-            background: #1e2b3f;
-            border-radius: 2rem;
-            padding: 0.2rem 0.9rem;
-            font-size: 0.75rem;
-            font-weight: 600;
-            color: #6ee7b7;
-            border: 1px solid #2d4b6e;
-            display: flex;
-            align-items: center;
-            gap: 0.3rem;
-        }
-
-        .live-badge::before {
-            content: "●";
-            color: #4ade80;
-            font-size: 0.9rem;
-            animation: pulse 1.5s infinite;
-        }
-
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.3; }
-            100% { opacity: 1; }
-        }
-
-        .player-list {
-            list-style: none;
-            overflow-y: auto;
-            padding-right: 0.8rem;
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-            max-height: 480px;
-        }
-
-        .player-list li {
-            display: flex;
-            align-items: center;
-            gap: 0.8rem;
-            background: #111e30;
-            padding: 0.8rem 1rem;
-            border-radius: 1.2rem;
-            border: 1px solid #1f3149;
-            transition: 0.1s;
-            color: #cbd5e1;
-        }
-
-        .player-rank {
-            font-weight: 800;
-            color: #facc15;
-            width: 2rem;
-            text-align: center;
-            font-size: 1rem;
-        }
-
-        .player-name {
-            flex: 1;
-            font-weight: 600;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .player-score {
-            font-weight: 700;
-            background: #1b2b41;
-            padding: 0.2rem 0.9rem;
-            border-radius: 2rem;
-            color: #facc15;
-            font-size: 0.95rem;
-            border: 1px solid #2f4562;
-        }
-
-        .player-list li.top1 {
-            background: #1f2e44;
-            border-color: #facc15;
-            box-shadow: 0 0 12px rgba(250, 204, 21, 0.2);
-        }
-
-        /* toast / message */
-        .message-toast {
-            background: #0d1a2b;
-            border-left: 5px solid #facc15;
-            padding: 0.8rem 1.2rem;
-            border-radius: 0.8rem;
-            color: #b9d0f0;
-            font-weight: 500;
-            margin-bottom: 1rem;
-            font-size: 0.95rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            border: 1px solid #2c405e;
-        }
-
-        .feedback {
-            margin-top: 0.8rem;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.5rem 1rem;
-            font-size: 0.9rem;
-        }
-
-        .feedback span.correct {
-            color: #4ade80;
-        }
-
-        .feedback span.duplicate {
-            color: #60a5fa;
-        }
-
-        .feedback span.wrong {
-            color: #f87171;
-        }
-
-        .category-sub {
-            font-size: 0.8rem;
-            color: #6c86a8;
-            margin-left: 0.3rem;
-        }
-
-        /* responsive */
-        @media (max-width: 950px) {
-            .game-grid {
-                grid-template-columns: 1fr;
-            }
-            .leaderboard-panel {
-                max-height: 400px;
-            }
-            .inputs-grid {
-                grid-template-columns: 1fr;
-            }
-            .game-container {
-                padding: 1.5rem;
-            }
-        }
-
-        @media (max-width: 550px) {
-            .top-bar {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-            .current-letter {
-                font-size: 2.5rem;
-                width: 4.2rem;
-                height: 4.2rem;
-            }
-        }
-
-        /* custom scroll */
-        .player-list::-webkit-scrollbar {
-            width: 6px;
-        }
-        .player-list::-webkit-scrollbar-track {
-            background: #0b1422;
-            border-radius: 10px;
-        }
-        .player-list::-webkit-scrollbar-thumb {
-            background: #2d4565;
-            border-radius: 10px;
-        }
-        .player-list::-webkit-scrollbar-thumb:hover {
-            background: #3f5c82;
-        }
-    </style>
+  .toast {
+    position: fixed; bottom: 1.2rem; left: 50%; transform: translateX(-50%);
+    background: #101b2f; border: 1px solid #2b3f5d; color: #e6edf7;
+    padding: 0.7rem 1.2rem; border-radius: 1rem; font-weight: 600;
+    box-shadow: 0 20px 40px -15px rgba(0,0,0,0.7); opacity: 0; pointer-events: none;
+    transition: opacity 0.25s; z-index: 50;
+  }
+  .toast.show { opacity: 1; }
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-thumb { background: #2c4266; border-radius: 10px; }
+</style>
 </head>
 <body>
-<div class="game-container">
-    <!-- top bar -->
+<div class="app">
+
+  <!-- ========== SIGN-IN ========== -->
+  <section id="screen-signin" class="screen">
+    <div class="signin-wrap">
+      <h1>🎯 Letter Rush</h1>
+      <p class="sub">Live multiplayer · No signup · Nothing saved</p>
+
+      <div class="mode-tabs">
+        <div class="mode-tab active" data-mode="host">🏠 Host a Game</div>
+        <div class="mode-tab" data-mode="join">🔗 Join a Game</div>
+      </div>
+
+      <div class="field">
+        <label for="playerName">Your Name</label>
+        <input id="playerName" maxlength="16" placeholder="e.g. Alex" autocomplete="off" />
+      </div>
+
+      <div class="field" id="roomField" style="display:none;">
+        <label for="roomCodeInput">Room Code</label>
+        <input id="roomCodeInput" maxlength="6" placeholder="e.g. AB12CD" autocomplete="off" style="text-transform:uppercase;" />
+      </div>
+
+      <div class="field">
+        <label>Choose Your Character</label>
+        <div class="avatar-grid" id="avatarGrid"></div>
+      </div>
+
+      <div class="row" style="justify-content: flex-end;">
+        <button class="btn btn-primary btn-big" id="enterBtn">Continue →</button>
+      </div>
+      <div class="banner" id="connBanner" style="display:none;"></div>
+    </div>
+  </section>
+
+  <!-- ========== LOBBY ========== -->
+  <section id="screen-lobby" class="screen hidden">
+    <div class="row" style="justify-content: space-between; margin-bottom: 1.2rem;">
+      <h1>🛋️ Lobby</h1>
+      <button class="btn btn-ghost" id="leaveLobbyBtn">← Leave</button>
+    </div>
+
+    <div class="lobby-grid">
+      <div class="card">
+        <h3>👥 Players <span class="muted" id="playerCount"></span></h3>
+        <ul class="players-list" id="lobbyPlayers"></ul>
+        <div class="banner" id="lobbyStatusBanner">Connecting…</div>
+      </div>
+
+      <div class="card">
+        <h3>🎮 Share This Room</h3>
+        <div class="row" style="margin-bottom: 1rem;">
+          <span class="muted">Room code:</span>
+          <span class="room-code" id="roomCode">—</span>
+        </div>
+        <p class="muted" style="margin-bottom: 0.4rem;">Send this link to friends on any computer:</p>
+        <div class="link-box" id="shareLink"></div>
+        <button class="btn btn-ghost" id="copyLinkBtn" style="margin-top: 0.8rem; width: 100%; justify-content: center;">📋 Copy Link</button>
+
+        <div id="hostControls" class="hidden" style="margin-top: 1.4rem;">
+          <p class="muted" style="margin-bottom: 0.8rem;">You are the <strong style="color:#facc15;">Host</strong>. Start when everyone is ready.</p>
+          <button class="btn btn-primary" id="startGameBtn" style="width:100%; justify-content:center;">▶ Start Game</button>
+        </div>
+        <div id="guestControls" class="hidden" style="margin-top: 1.4rem;">
+          <p class="muted">Only the host can start the game. Hang tight ✨</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== GAME ========== -->
+  <section id="screen-game" class="screen hidden">
     <div class="top-bar">
-        <div class="letter-badge">
-            <span>Letter</span>
-            <div class="current-letter" id="currentLetterDisplay">?</div>
-        </div>
-        <div class="round-info">
-            <span>ROUND</span> <strong id="roundNumber">1</strong>
-        </div>
-        <div class="timer-section">
-            <div class="timer-label">TIME</div>
-            <div class="timer-value" id="timerDisplay">45</div>
-        </div>
+      <div class="row">
+        <span class="pill">Round <span id="roundNum">1</span></span>
+        <div class="big-letter" id="letterDisplay">?</div>
+      </div>
+      <div class="row">
+        <span class="pill">⏱</span>
+        <div class="timer-big" id="timerDisplay">45</div>
+      </div>
+      <div class="row">
+        <span class="pill" id="playersInline">👥 0 players</span>
+        <button class="btn btn-ghost" id="leaveGameBtn" style="padding: 0.5rem 1rem;">Leave</button>
+      </div>
     </div>
 
-    <!-- main game grid -->
     <div class="game-grid">
-        <!-- left side: inputs -->
-        <div class="input-panel">
-            <div class="category-title">
-                <i>📝</i> Your answers for letter <span id="letterHint" style="color:#facc15; margin-left:0.3rem;">?</span>
-            </div>
-
-            <div class="inputs-grid" id="inputsContainer">
-                <!-- dynamically filled by js: 6 categories -->
-            </div>
-
-            <div class="action-buttons">
-                <button class="btn btn-secondary" id="newRoundBtn" disabled>🔄 New Round</button>
-                <button class="btn btn-primary" id="submitBtn">✅ Submit Answers</button>
-            </div>
-
-            <div id="feedbackArea" class="feedback"></div>
-            <div id="messageBox" class="message-toast" style="margin-top: 1.2rem; display: none;"></div>
+      <div class="card">
+        <h3>✍️ Your Answers</h3>
+        <div class="inputs-grid" id="inputsContainer"></div>
+        <div class="row" style="justify-content: flex-end; margin-top: 1rem;">
+          <button class="btn btn-primary" id="submitBtn">✅ Submit</button>
         </div>
+        <div class="feedback" id="feedbackArea"></div>
+        <div class="banner hidden" id="waitingBanner"></div>
+      </div>
 
-        <!-- right side: leaderboard -->
-        <div class="leaderboard-panel">
-            <div class="leaderboard-header">
-                <h3>🏆 Leaderboard</h3>
-                <div class="live-badge">LIVE</div>
-            </div>
-            <ul class="player-list" id="leaderboardList">
-                <!-- filled dynamically -->
-            </ul>
-        </div>
+      <div class="card">
+        <h3>🏆 Live Leaderboard</h3>
+        <ul class="leaderboard-list" id="leaderboardList"></ul>
+      </div>
     </div>
+  </section>
+
 </div>
+<div class="toast" id="toast"></div>
 
 <script>
-    // -----------------------------------------------
-    // GAME CONFIGURATION & STATE
-    // -----------------------------------------------
-    const CATEGORIES = [
-        { key: 'name', label: 'Name', icon: '👤', hint: 'e.g. Emma, David' },
-        { key: 'fruitVeg', label: 'Fruit / Veg', icon: '🍎', hint: 'Apple, Broccoli' },
-        { key: 'carBrand', label: 'Car Brand', icon: '🚗', hint: 'Audi, Ford' },
-        { key: 'animal', label: 'Animal', icon: '🦁', hint: 'Lion, Eagle' },
-        { key: 'place', label: 'Place / City / Country', icon: '🌍', hint: 'Paris, Japan' },
-        { key: 'object', label: 'Object / Thing', icon: '📦', hint: 'Table, Phone' }
-    ];
+/* =========================================================
+   LETTER RUSH — WebRTC Multiplayer via PeerJS
+   - Host acts as the relay (PeerJS "server" peer)
+   - Guests connect to host and exchange messages
+   - NOTHING is persisted anywhere
+   ========================================================= */
 
-    // Simulated online players (AI opponents)
-    const AI_PLAYERS = [
-        { id: 'ai1', name: 'Luna', avatar: '🌙' },
-        { id: 'ai2', name: 'Max', avatar: '⚡' },
-        { id: 'ai3', name: 'Zoe', avatar: '✨' },
-        { id: 'ai4', name: 'Kai', avatar: '🔥' },
-        { id: 'ai5', name: 'Mia', avatar: '🌸' }
-    ];
+const CATEGORIES = [
+  { key:'name',   label:'Name',                   icon:'👤' },
+  { key:'fruit',  label:'Fruit / Veg',            icon:'🍎' },
+  { key:'car',    label:'Car Brand',              icon:'🚗' },
+  { key:'animal', label:'Animal',                 icon:'🦁' },
+  { key:'place',  label:'Place / City / Country', icon:'🌍' },
+  { key:'object', label:'Object / Thing',         icon:'📦' }
+];
+const AVATARS = ['🦊','🐼','🐯','🦄','🐸','🐙','🦉','🐝','🦁','🐨','🐧','🐢'];
+const ROUND_TIME = 45;
+const BETWEEN_ROUNDS = 6;
+const TOTAL_ROUNDS = 5;
 
-    // Global state
-    let currentLetter = '';
-    let currentRound = 1;
-    let timeLeft = 45;
-    let timerInterval = null;
-    let roundActive = true;          // accepting submissions
-    let roundSubmitted = false;      // human already submitted this round
-    let leaderboard = [];            // { id, name, avatar, score, isHuman }
+/* ---------- utility ---------- */
+const $ = id => document.getElementById(id);
+const uid = () => Math.random().toString(36).slice(2,10);
+function toast(t, ms=1800) {
+  const el = $('toast'); el.textContent = t; el.classList.add('show');
+  clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove('show'), ms);
+}
+function randomLetter(){ return 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[Math.floor(Math.random()*26)]; }
+function startsWith(s, l){ return s && s.trim().toLowerCase().startsWith(l.toLowerCase()); }
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+function randomRoomCode(){
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no confusing 0/O/1/I
+  let c = ''; for (let i=0;i<6;i++) c += chars[Math.floor(Math.random()*chars.length)];
+  return c;
+}
 
-    // Human player
-    const humanPlayer = {
-        id: 'human',
-        name: 'You',
-        avatar: '🧑',
-        score: 0,
-        isHuman: true
+/* ---------- State ---------- */
+let me = null;               // { id, name, avatar, isHost }
+let room = null;             // authoritative room state (host keeps truth)
+let peer = null;             // PeerJS instance
+let hostConn = null;         // guest → host connection
+let guestConns = new Map();  // host: guestId → DataConnection
+let timerInterval = null;
+let betweenInterval = null;
+let mySubmissionMade = false;
+let pickedAvatar = AVATARS[0];
+let pickedMode = 'host';
+
+/* ===================== SIGN-IN UI ===================== */
+(function buildAvatars(){
+  const grid = $('avatarGrid');
+  AVATARS.forEach(a => {
+    const d = document.createElement('div');
+    d.className = 'avatar-option'; d.textContent = a; d.dataset.avatar = a;
+    d.onclick = () => {
+      document.querySelectorAll('.avatar-option').forEach(x => x.classList.remove('selected'));
+      d.classList.add('selected'); pickedAvatar = a;
+    };
+    grid.appendChild(d);
+  });
+  // preselect random
+  const rand = AVATARS[Math.floor(Math.random()*AVATARS.length)];
+  pickedAvatar = rand;
+  grid.querySelector(`[data-avatar="${rand}"]`).classList.add('selected');
+})();
+
+document.querySelectorAll('.mode-tab').forEach(tab => {
+  tab.onclick = () => {
+    document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    pickedMode = tab.dataset.mode;
+    $('roomField').style.display = pickedMode === 'join' ? '' : 'none';
+  };
+});
+
+$('enterBtn').onclick = async () => {
+  const name = $('playerName').value.trim();
+  if (!name) { toast('Please enter a name'); return; }
+  if (pickedMode === 'join') {
+    const code = $('roomCodeInput').value.trim().toUpperCase();
+    if (!code) { toast('Enter the room code'); return; }
+    me = { id: uid(), name, avatar: pickedAvatar, isHost: false };
+    await joinRoom(code);
+  } else {
+    me = { id: uid(), name, avatar: pickedAvatar, isHost: true };
+    await hostRoom();
+  }
+};
+
+/* ===================== HOST ===================== */
+function hostRoom() {
+  return new Promise((resolve) => {
+    const code = randomRoomCode();
+    room = {
+      id: code,
+      hostId: me.id,
+      started: false,
+      round: 0,
+      letter: null,
+      players: [{ id: me.id, name: me.name, avatar: me.avatar }],
+      scores: { [me.id]: 0 },
+      submissions: {}
     };
 
-    // Store this round's correct answers & player entries for scoring
-    let roundAnswers = {};           // { category: { answer, valid } } for human
-    let aiRoundAnswers = {};         // { aiId: { category: answer } }
-    let duplicateCounts = {};        // { category: { answer: count } }
+    showConnBanner('Opening room…');
 
-    // DOM elements
-    const currentLetterDisplay = document.getElementById('currentLetterDisplay');
-    const letterHint = document.getElementById('letterHint');
-    const timerDisplay = document.getElementById('timerDisplay');
-    const roundNumberEl = document.getElementById('roundNumber');
-    const inputsContainer = document.getElementById('inputsContainer');
-    const submitBtn = document.getElementById('submitBtn');
-    const newRoundBtn = document.getElementById('newRoundBtn');
-    const leaderboardList = document.getElementById('leaderboardList');
-    const feedbackArea = document.getElementById('feedbackArea');
-    const messageBox = document.getElementById('messageBox');
+    peer = new Peer('letterrush-' + code, { debug: 1 });
 
-    // -----------------------------------------------
-    // UTILS
-    // -----------------------------------------------
-    function randomLetter() {
-        const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-        return letters[Math.floor(Math.random() * letters.length)];
-    }
+    peer.on('open', () => {
+      hideConnBanner();
+      toast('Room created · ' + code);
+      renderLobby();
+      showScreen('lobby');
+      resolve();
+    });
 
-    // Generate AI answers for a given letter (simulated)
-    function generateAIAnswers(letter) {
-        const answers = {};
-        const lowercaseLetter = letter.toLowerCase();
+    peer.on('error', err => {
+      // If ID taken (rare), retry with new code
+      if (err.type === 'unavailable-id') {
+        peer.destroy();
+        hostRoom();
+      } else {
+        showConnBanner('Connection error: ' + err.type + '. Try again.');
+      }
+    });
 
-        // simple mocked dictionary per category
-        const mockDB = {
-            name: ['Anna', 'Adam', 'Alex', 'Amelia', 'Aaron', 'Bella', 'Ben', 'Blake', 'Carlos', 'Chloe', 'Diana', 'Derek', 'Elena', 'Ethan', 'Fiona', 'Felix', 'Grace', 'Gabriel', 'Hannah', 'Henry', 'Ivy', 'Isaac', 'Julia', 'Jack', 'Kevin', 'Kira', 'Liam', 'Lily', 'Mia', 'Noah', 'Olivia', 'Oscar', 'Paula', 'Peter', 'Quinn', 'Rachel', 'Ryan', 'Sophia', 'Sam', 'Tina', 'Tom', 'Ursula', 'Victor', 'Wendy', 'Xavier', 'Yara', 'Zara', 'Zane'],
-            fruitVeg: ['Apple', 'Apricot', 'Avocado', 'Banana', 'Broccoli', 'Carrot', 'Cherry', 'Cucumber', 'Date', 'Eggplant', 'Fig', 'Grape', 'Guava', 'Honeydew', 'Iceberg', 'Jackfruit', 'Kiwi', 'Lemon', 'Lime', 'Mango', 'Nectarine', 'Orange', 'Papaya', 'Quince', 'Raspberry', 'Spinach', 'Tomato', 'Ugli', 'Vanilla', 'Watermelon', 'Yam', 'Zucchini'],
-            carBrand: ['Audi', 'BMW', 'Bentley', 'Buick', 'Cadillac', 'Chevrolet', 'Chrysler', 'Dodge', 'Ferrari', 'Fiat', 'Ford', 'Genesis', 'GMC', 'Honda', 'Hyundai', 'Infiniti', 'Jaguar', 'Jeep', 'Kia', 'Lamborghini', 'Lexus', 'Lincoln', 'Mazda', 'Mercedes', 'Nissan', 'Opel', 'Peugeot', 'Porsche', 'Renault', 'Rolls-Royce', 'Saab', 'Tesla', 'Toyota', 'Volvo', 'VW'],
-            animal: ['Aardvark', 'Albatross', 'Alligator', 'Antelope', 'Baboon', 'Badger', 'Bat', 'Bear', 'Beaver', 'Bison', 'Camel', 'Cat', 'Cheetah', 'Chimpanzee', 'Deer', 'Dog', 'Dolphin', 'Donkey', 'Eagle', 'Elephant', 'Emu', 'Falcon', 'Ferret', 'Fox', 'Gazelle', 'Giraffe', 'Goat', 'Gorilla', 'Hamster', 'Hawk', 'Hedgehog', 'Hippo', 'Ibis', 'Iguana', 'Impala', 'Jackal', 'Jaguar', 'Kangaroo', 'Koala', 'Lemur', 'Leopard', 'Lion', 'Llama', 'Mole', 'Monkey', 'Narwhal', 'Newt', 'Ocelot', 'Octopus', 'Ostrich', 'Otter', 'Owl', 'Panda', 'Parrot', 'Penguin', 'Quail', 'Rabbit', 'Raccoon', 'Seal', 'Shark', 'Sheep', 'Snake', 'Tiger', 'Turtle', 'Urchin', 'Vulture', 'Walrus', 'Wolf', 'Xerus', 'Yak', 'Zebra'],
-            place: ['Amsterdam', 'Athens', 'Atlanta', 'Berlin', 'Boston', 'Cairo', 'Chicago', 'Delhi', 'Dubai', 'Edinburgh', 'Florence', 'Geneva', 'Hanoi', 'Helsinki', 'Istanbul', 'Jakarta', 'Kansas', 'Kyoto', 'Lisbon', 'London', 'Madrid', 'Melbourne', 'Nairobi', 'New York', 'Oslo', 'Oxford', 'Paris', 'Prague', 'Quebec', 'Rome', 'Seoul', 'Sydney', 'Tokyo', 'Toronto', 'Vienna', 'Venice', 'Warsaw', 'Washington', 'Zurich'],
-            object: ['Anchor', 'Antenna', 'Apron', 'Backpack', 'Balloon', 'Basket', 'Bottle', 'Camera', 'Candle', 'Chair', 'Clock', 'Cup', 'Desk', 'Doll', 'Door', 'Eraser', 'Fan', 'Fork', 'Glass', 'Guitar', 'Hammer', 'Helmet', 'Iron', 'Jacket', 'Kettle', 'Key', 'Knife', 'Lamp', 'Laptop', 'Mirror', 'Mug', 'Notebook', 'Oven', 'Pen', 'Phone', 'Pillow', 'Quilt', 'Radio', 'Ruler', 'Scissors', 'Spoon', 'Table', 'Umbrella', 'Vase', 'Watch', 'Xylophone', 'Yarn', 'Zipper']
-        };
-
-        for (let cat of CATEGORIES) {
-            const key = cat.key;
-            const words = mockDB[key] || [];
-            const matched = words.filter(w => w.toLowerCase().startsWith(lowercaseLetter));
-            if (matched.length > 0) {
-                // pick random matched word, or sometimes a generic starting with letter (fail occasionally)
-                if (Math.random() < 0.85) {
-                    answers[key] = matched[Math.floor(Math.random() * matched.length)];
-                } else {
-                    // fallback: random word not starting with letter (will be invalid)
-                    answers[key] = words[Math.floor(Math.random() * words.length)] || letter + 'word';
-                }
-            } else {
-                // no match -> generate something that might not start with letter
-                const randomWord = words.length ? words[Math.floor(Math.random() * words.length)] : letter + 'thing';
-                answers[key] = randomWord;
-            }
+    peer.on('connection', conn => {
+      conn.on('open', () => {
+        // Late joiners are blocked if game started
+        if (room.started) {
+          conn.send({ type: 'rejected', reason: 'Game already started' });
+          setTimeout(() => conn.close(), 200);
+          return;
         }
-        return answers;
-    }
+        guestConns.set(conn.peer, conn);
 
-    // check if a string starts with letter (case insensitive)
-    function startsWithLetter(str, letter) {
-        if (!str) return false;
-        return str.trim().toLowerCase().startsWith(letter.toLowerCase());
-    }
-
-    // -----------------------------------------------
-    // LEADERBOARD RENDER (live)
-    // -----------------------------------------------
-    function renderLeaderboard() {
-        // sort descending by score, then name
-        const sorted = [...leaderboard].sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
-
-        let html = '';
-        sorted.forEach((player, index) => {
-            const rank = index + 1;
-            const topClass = rank === 1 ? 'top1' : '';
-            html += `<li class="${topClass}">
-                <span class="player-rank">#${rank}</span>
-                <span class="player-name">${player.avatar || '👤'} ${player.name}</span>
-                <span class="player-score">${player.score} pts</span>
-            </li>`;
+        conn.on('data', data => handleGuestMessage(conn, data));
+        conn.on('close', () => {
+          const guestId = conn.metadata?.id;
+          guestConns.delete(conn.peer);
+          if (guestId) {
+            room.players = room.players.filter(p => p.id !== guestId);
+            broadcastToGuests({ type: 'roomUpdate', room });
+            renderLobby();
+            if (!$('screen-lobby').classList.contains('hidden')) renderLobby();
+            if (!$('screen-game').classList.contains('hidden')) renderGameUI();
+          }
         });
-        leaderboardList.innerHTML = html;
-    }
+      });
+    });
+  });
+}
 
-    // initialise leaderboard with human + AI players
-    function initLeaderboard() {
-        leaderboard = [
-            { ...humanPlayer, score: 0 },
-            ...AI_PLAYERS.map(ai => ({ ...ai, score: 0, isHuman: false }))
-        ];
-        renderLeaderboard();
-    }
+/* ===================== GUEST ===================== */
+function joinRoom(code) {
+  return new Promise((resolve) => {
+    showConnBanner('Connecting to room ' + code + '…');
+    peer = new Peer({ debug: 1 });
 
-    // update human score in leaderboard
-    function syncHumanScore() {
-        const entry = leaderboard.find(p => p.id === 'human');
-        if (entry) entry.score = humanPlayer.score;
-        renderLeaderboard();
-    }
+    peer.on('open', () => {
+      const conn = peer.connect('letterrush-' + code, {
+        metadata: { id: me.id, name: me.name, avatar: me.avatar }
+      });
+      hostConn = conn;
 
-    // -----------------------------------------------
-    // BUILD INPUTS
-    // -----------------------------------------------
-    function buildInputs(letter) {
-        let html = '';
-        CATEGORIES.forEach(cat => {
-            html += `
-                <div class="input-group">
-                    <label>${cat.icon} ${cat.label} <span>${letter}…</span></label>
-                    <input type="text" id="input-${cat.key}" placeholder="${cat.hint}" autocomplete="off" ${!roundActive || roundSubmitted ? 'disabled' : ''}>
-                </div>
-            `;
-        });
-        inputsContainer.innerHTML = html;
-
-        // attach listeners to clear feedback
-        CATEGORIES.forEach(cat => {
-            const input = document.getElementById(`input-${cat.key}`);
-            if (input) {
-                input.addEventListener('input', () => {
-                    feedbackArea.innerHTML = '';
-                });
-            }
-        });
-    }
-
-    // get current human inputs
-    function getHumanInputs() {
-        const inputs = {};
-        CATEGORIES.forEach(cat => {
-            const field = document.getElementById(`input-${cat.key}`);
-            inputs[cat.key] = field ? field.value.trim() : '';
-        });
-        return inputs;
-    }
-
-    // disable / enable inputs
-    function setInputsEnabled(enabled) {
-        CATEGORIES.forEach(cat => {
-            const field = document.getElementById(`input-${cat.key}`);
-            if (field) field.disabled = !enabled;
-        });
-    }
-
-    // -----------------------------------------------
-    // TIMER
-    // -----------------------------------------------
-    function startTimer() {
-        if (timerInterval) clearInterval(timerInterval);
-        timeLeft = 45;
-        timerDisplay.textContent = timeLeft;
-
-        timerInterval = setInterval(() => {
-            timeLeft -= 1;
-            timerDisplay.textContent = timeLeft;
-
-            if (timeLeft <= 0) {
-                clearInterval(timerInterval);
-                timerInterval = null;
-                endRoundDueToTime();
-            }
-        }, 1000);
-    }
-
-    function stopTimer() {
-        if (timerInterval) {
-            clearInterval(timerInterval);
-            timerInterval = null;
+      const timeout = setTimeout(() => {
+        if (!conn.open) {
+          showConnBanner('❌ Room not found or host offline. Check the code.');
+          peer.destroy(); peer = null;
         }
+      }, 10000);
+
+      conn.on('open', () => {
+        clearTimeout(timeout);
+        hideConnBanner();
+        toast('Joined room ' + code);
+        // Send hello
+        conn.send({
+          type: 'hello',
+          player: { id: me.id, name: me.name, avatar: me.avatar }
+        });
+        resolve();
+      });
+
+      conn.on('data', data => handleHostMessage(data));
+
+      conn.on('close', () => {
+        hideConnBanner();
+        toast('Host disconnected');
+        // Reset to sign in
+        setTimeout(() => {
+          if (room) room = null;
+          showScreen('signin');
+        }, 900);
+      });
+    });
+
+    peer.on('error', err => {
+      hideConnBanner();
+      if (err.type === 'peer-unavailable') {
+        showConnBanner('❌ Room not found. Check the code.');
+      } else {
+        showConnBanner('Connection error: ' + err.type);
+      }
+    });
+  });
+}
+
+/* ===================== MESSAGE HANDLING ===================== */
+// Host receives from a guest
+function handleGuestMessage(conn, data) {
+  switch (data.type) {
+    case 'hello': {
+      if (room.started) {
+        conn.send({ type:'rejected', reason:'Game already started' });
+        return;
+      }
+      if (!room.players.some(p => p.id === data.player.id)) {
+        room.players.push(data.player);
+        room.scores[data.player.id] = room.scores[data.player.id] || 0;
+      }
+      conn.metadata = { id: data.player.id };
+      // Send full room state back
+      conn.send({ type: 'roomState', room });
+      // Broadcast updated player list to everyone
+      broadcastToGuests({ type: 'roomUpdate', room });
+      renderLobby();
+      toast(data.player.name + ' joined');
+      break;
     }
-
-    // -----------------------------------------------
-    // SCORING & ROUND END
-    // -----------------------------------------------
-    function computeDuplicateCounts() {
-        // count occurrences of each answer per category across all players (human + AI)
-        const counts = {};
-        CATEGORIES.forEach(cat => {
-            counts[cat.key] = {};
-        });
-
-        // collect all answers (human + AI)
-        const allEntries = [];
-
-        // human
-        const humanInputs = getHumanInputs();
-        CATEGORIES.forEach(cat => {
-            const val = humanInputs[cat.key]?.trim().toLowerCase();
-            if (val) {
-                allEntries.push({ category: cat.key, answer: val, playerId: 'human' });
-            }
-        });
-
-        // AI
-        for (let aiId in aiRoundAnswers) {
-            const aiAns = aiRoundAnswers[aiId];
-            CATEGORIES.forEach(cat => {
-                const val = aiAns[cat.key]?.trim().toLowerCase();
-                if (val) {
-                    allEntries.push({ category: cat.key, answer: val, playerId: aiId });
-                }
-            });
-        }
-
-        // count duplicates per category
-        allEntries.forEach(entry => {
-            const { category, answer } = entry;
-            if (!counts[category][answer]) counts[category][answer] = 0;
-            counts[category][answer] += 1;
-        });
-
-        duplicateCounts = counts;
-        return counts;
+    case 'submission': {
+      room.submissions[data.playerId] = data.answers;
+      // If all submitted → end round
+      if (Object.keys(room.submissions).length === room.players.length) {
+        endRoundAsHost();
+      }
+      break;
     }
+  }
+}
 
-    function endRound() {
-        if (!roundActive) return;
-        roundActive = false;
-        stopTimer();
-        setInputsEnabled(false);
-        submitBtn.disabled = true;
+// Guest receives from host
+function handleHostMessage(data) {
+  switch (data.type) {
+    case 'roomState':
+      room = data.room;
+      renderLobby();
+      showScreen('lobby');
+      break;
+    case 'roomUpdate':
+      room = data.room;
+      if (!$('screen-lobby').classList.contains('hidden')) renderLobby();
+      if (!$('screen-game').classList.contains('hidden')) renderGameUI();
+      break;
+    case 'rejected':
+      showConnBanner('❌ ' + (data.reason || 'Cannot join'));
+      if (peer) peer.destroy();
+      setTimeout(() => showScreen('signin'), 1500);
+      break;
+    case 'gameStarted':
+      room = data.room;
+      enterGameScreen();
+      break;
+    case 'roundEnded':
+      room = data.room;
+      renderGameUI();
+      showBetweenRounds();
+      break;
+    case 'nextRound':
+      room = data.room;
+      mySubmissionMade = false;
+      renderGameUI();
+      startRoundTimer();
+      break;
+    case 'gameOver':
+      room = data.room;
+      showGameOver();
+      break;
+  }
+}
 
-        // Build feedback for human
-        const humanInputs = getHumanInputs();
-        let feedbackHtml = '';
+function broadcastToGuests(msg) {
+  guestConns.forEach(conn => { if (conn.open) conn.send(msg); });
+}
 
-        // First, verify each category for human and compute points
-        CATEGORIES.forEach(cat => {
-            const raw = humanInputs[cat.key]?.trim();
-            const answer = raw ? raw : '';
-            const valid = answer && startsWithLetter(answer, currentLetter);
-            const categoryLabel = cat.label;
-            if (!answer) {
-                feedbackHtml += `<span class="wrong">✗ ${categoryLabel}: empty</span> `;
-            } else if (!valid) {
-                feedbackHtml += `<span class="wrong">✗ ${categoryLabel}: "${answer}" (wrong letter)</span> `;
-            } else {
-                feedbackHtml += `<span class="correct">✓ ${categoryLabel}: "${answer}"</span> `;
-            }
-        });
+/* ===================== LOBBY RENDER ===================== */
+function renderLobby() {
+  if (!room) return;
+  $('roomCode').textContent = room.id;
+  $('playerCount').textContent = `(${room.players.length})`;
 
-        // Scoring for human
-        let humanPoints = 0;
-        CATEGORIES.forEach(cat => {
-            const raw = humanInputs[cat.key]?.trim();
-            const answer = raw ? raw.toLowerCase() : '';
-            const valid = answer && startsWithLetter(answer, currentLetter);
-            if (valid) {
-                // base points
-                humanPoints += 10;
-                // duplicate bonus
-                const dupCount = duplicateCounts[cat.key]?.[answer] || 0;
-                // dupCount includes human + others; if more than 1, human gets +5 for each duplicate (including itself? rule: "5 points each to those who have the same guess")
-                // The rule: players are rewarded 10 points if correct and 5 points each to those who have the same guess.
-                // Interpretation: if multiple players have same valid answer, each of them gets +5 extra for each other player with same answer.
-                // We'll implement: for each other player with same answer, +5. dupCount includes self, so (dupCount -1) * 5 extra.
-                const extra = Math.max(0, dupCount - 1) * 5;
-                humanPoints += extra;
-                if (extra > 0) {
-                    feedbackHtml += `<span class="duplicate">+${extra} dup bonus (${categoryLabel})</span> `;
-                }
-            }
-        });
+  // Share link
+  const url = location.origin + location.pathname + '?room=' + room.id;
+  $('shareLink').innerHTML = `Send this link: <br><strong>${escapeHtml(url)}</strong>`;
 
-        humanPlayer.score += humanPoints;
-        syncHumanScore();
+  const ul = $('lobbyPlayers');
+  ul.innerHTML = '';
+  room.players.forEach(p => {
+    const li = document.createElement('li');
+    if (p.id === room.hostId) li.classList.add('host');
+    if (p.id === me.id) li.classList.add('you');
+    li.innerHTML = `
+      <span class="av">${p.avatar}</span>
+      <span class="nm">${escapeHtml(p.name)}${p.id === me.id ? ' <span class="muted">(you)</span>' : ''}</span>
+      ${p.id === room.hostId ? '<span class="tag">Host</span>' : ''}
+    `;
+    ul.appendChild(li);
+  });
 
-        // --- AI scoring (simple simulation based on the same rules) ---
-        for (let aiId in aiRoundAnswers) {
-            const aiAns = aiRoundAnswers[aiId];
-            let aiPoints = 0;
-            CATEGORIES.forEach(cat => {
-                const raw = aiAns[cat.key]?.trim();
-                const answer = raw ? raw.toLowerCase() : '';
-                const valid = answer && startsWithLetter(answer, currentLetter);
-                if (valid) {
-                    aiPoints += 10;
-                    const dupCount = duplicateCounts[cat.key]?.[answer] || 0;
-                    const extra = Math.max(0, dupCount - 1) * 5;
-                    aiPoints += extra;
-                }
-            });
-            // update leaderboard entry
-            const aiEntry = leaderboard.find(p => p.id === aiId);
-            if (aiEntry) aiEntry.score += aiPoints;
-        }
+  if (me.isHost) {
+    $('hostControls').classList.remove('hidden');
+    $('guestControls').classList.add('hidden');
+    $('lobbyStatusBanner').textContent = room.players.length < 2
+      ? 'Waiting for more players to join…'
+      : `Ready — ${room.players.length} players in the room. Start when you like!`;
+    $('startGameBtn').disabled = room.players.length < 2;
+  } else {
+    $('hostControls').classList.add('hidden');
+    $('guestControls').classList.remove('hidden');
+    $('lobbyStatusBanner').textContent = 'Waiting for the host to start…';
+  }
+}
 
-        renderLeaderboard();
+$('copyLinkBtn').onclick = () => {
+  const url = location.origin + location.pathname + '?room=' + room.id;
+  navigator.clipboard.writeText(url).then(() => toast('Link copied!'));
+};
 
-        // Show feedback for human
-        feedbackArea.innerHTML = feedbackHtml || '<span class="correct">No valid answers this round.</span>';
-        messageBox.style.display = 'block';
-        messageBox.innerHTML = `⏰ Round over! You earned <strong>${humanPoints} points</strong> this round.`;
+$('leaveLobbyBtn').onclick = () => {
+  if (peer) { peer.destroy(); peer = null; }
+  hostConn = null; guestConns.clear(); room = null; me = null;
+  showScreen('signin');
+};
 
-        // enable new round button
-        newRoundBtn.disabled = false;
-        roundSubmitted = true;
+/* ===================== HOST STARTS GAME ===================== */
+$('startGameBtn').onclick = () => {
+  if (!me.isHost || !room) return;
+  room.started = true;
+  room.round = 1;
+  room.letter = randomLetter();
+  room.submissions = {};
+  broadcastToGuests({ type: 'gameStarted', room });
+  enterGameScreen();
+};
 
-        // Show leaderboard (already live)
+/* ===================== GAME UI ===================== */
+function enterGameScreen() {
+  showScreen('game');
+  mySubmissionMade = false;
+  renderGameUI();
+  startRoundTimer();
+}
+
+function renderGameUI() {
+  if (!room) return;
+  $('roundNum').textContent = room.round;
+  $('letterDisplay').textContent = room.letter || '?';
+  $('playersInline').textContent = `👥 ${room.players.length} players`;
+
+  const container = $('inputsContainer');
+  if (container.dataset.round !== String(room.round)) {
+    container.innerHTML = '';
+    CATEGORIES.forEach(cat => {
+      const wrap = document.createElement('div');
+      wrap.className = 'input-group';
+      wrap.innerHTML = `<label>${cat.icon} ${cat.label} — <span style="color:#facc15">${room.letter}</span></label>
+        <input id="in-${cat.key}" maxlength="24" autocomplete="off" placeholder="Starts with ${room.letter}…" ${mySubmissionMade ? 'disabled' : ''}/>`;
+      container.appendChild(wrap);
+    });
+    container.dataset.round = String(room.round);
+    $('submitBtn').disabled = mySubmissionMade;
+    $('submitBtn').classList.remove('hidden');
+    $('feedbackArea').innerHTML = '';
+    $('waitingBanner').classList.add('hidden');
+  }
+  renderLeaderboard();
+}
+
+function renderLeaderboard() {
+  if (!room) return;
+  const ul = $('leaderboardList');
+  ul.innerHTML = '';
+  const list = room.players.map(p => ({
+    ...p,
+    score: room.scores[p.id] || 0
+  })).sort((a,b) => b.score - a.score || a.name.localeCompare(b.name));
+
+  list.forEach((p, i) => {
+    const li = document.createElement('li');
+    if (p.id === me.id) li.classList.add('me');
+    li.innerHTML = `
+      <span class="rk">#${i+1}</span>
+      <span class="av">${p.avatar}</span>
+      <span class="nm">${escapeHtml(p.name)}${p.id === me.id ? ' (you)' : ''}</span>
+      <span class="sc">${p.score}</span>
+    `;
+    ul.appendChild(li);
+  });
+}
+
+/* ===================== TIMER ===================== */
+function startRoundTimer() {
+  clearInterval(timerInterval);
+  let t = ROUND_TIME;
+  $('timerDisplay').textContent = t;
+  timerInterval = setInterval(() => {
+    t--;
+    $('timerDisplay').textContent = t;
+    if (t <= 0) {
+      clearInterval(timerInterval);
+      if (!mySubmissionMade) submitAnswers(true);
+      // Host will end round when everyone submitted (or after a small grace)
+      if (me.isHost) {
+        // If someone hasn't submitted within 2s, force-end
+        setTimeout(() => { if (me.isHost && room && room.started) endRoundAsHost(); }, 2000);
+      }
     }
+  }, 1000);
+}
 
-    function endRoundDueToTime() {
-        if (!roundActive) return;
-        // If human hasn't submitted, auto-submit with current inputs
-        if (!roundSubmitted) {
-            // simulate submission (without double penalty)
-            roundSubmitted = true; // mark to avoid re-submit
-            // Gather AI answers already exist
-            computeDuplicateCounts();
-            endRound(); // this will also disable inputs, score, etc.
-        } else {
-            // already submitted, just end round
-            endRound();
-        }
+/* ===================== SUBMIT ===================== */
+$('submitBtn').onclick = () => submitAnswers(false);
+
+function submitAnswers(auto) {
+  if (!room || mySubmissionMade) return;
+  mySubmissionMade = true;
+  $('submitBtn').disabled = true;
+  $('waitingBanner').classList.remove('hidden');
+  $('waitingBanner').textContent = '⏳ Waiting for other players to submit…';
+  CATEGORIES.forEach(cat => { const el = $(`in-${cat.key}`); if (el) el.disabled = true; });
+
+  const answers = {};
+  CATEGORIES.forEach(cat => {
+    const el = $(`in-${cat.key}`);
+    answers[cat.key] = el ? el.value.trim() : '';
+  });
+
+  if (me.isHost) {
+    room.submissions[me.id] = answers;
+    if (Object.keys(room.submissions).length === room.players.length) endRoundAsHost();
+  } else {
+    hostConn.send({ type: 'submission', playerId: me.id, answers });
+  }
+  if (!auto) toast('Answers submitted ✅');
+}
+
+/* ===================== HOST: END ROUND ===================== */
+function endRoundAsHost() {
+  if (!me.isHost || !room || !room.started) return;
+  clearInterval(timerInterval);
+
+  // Count duplicates per category
+  const dupCount = {};
+  CATEGORIES.forEach(c => dupCount[c.key] = {});
+
+  room.players.forEach(p => {
+    const ans = room.submissions[p.id] || {};
+    CATEGORIES.forEach(c => {
+      const v = (ans[c.key] || '').trim().toLowerCase();
+      if (v && startsWith(v, room.letter)) {
+        dupCount[c.key][v] = (dupCount[c.key][v] || 0) + 1;
+      }
+    });
+  });
+
+  // Score everyone
+  room.players.forEach(p => {
+    const ans = room.submissions[p.id] || {};
+    let gained = 0;
+    CATEGORIES.forEach(c => {
+      const v = (ans[c.key] || '').trim().toLowerCase();
+      if (v && startsWith(v, room.letter)) {
+        gained += 10;
+        const others = (dupCount[c.key][v] || 1) - 1;
+        if (others > 0) gained += others * 5;
+      }
+    });
+    room.scores[p.id] = (room.scores[p.id] || 0) + gained;
+  });
+  room.lastRound = { dupCount };
+
+  broadcastToGuests({ type: 'roundEnded', room });
+  renderGameUI();
+  showBetweenRounds();
+}
+
+/* ===================== BETWEEN ROUNDS ===================== */
+function showBetweenRounds() {
+  renderLocalFeedback();
+  CATEGORIES.forEach(cat => { const el = $(`in-${cat.key}`); if (el) el.disabled = true; });
+  $('submitBtn').disabled = true;
+  $('waitingBanner').classList.remove('hidden');
+  $('waitingBanner').innerHTML = `📊 Round over! Next round in <strong id="cd">${BETWEEN_ROUNDS}</strong>s — check the leaderboard!`;
+
+  let cd = BETWEEN_ROUNDS;
+  clearInterval(betweenInterval);
+  betweenInterval = setInterval(() => {
+    cd--;
+    const el = $('cd'); if (el) el.textContent = cd;
+    if (cd <= 0) {
+      clearInterval(betweenInterval);
+      if (me.isHost) startNextRoundAsHost();
     }
+  }, 1000);
+}
 
-    // -----------------------------------------------
-    // SUBMIT HANDLER
-    // -----------------------------------------------
-    function handleSubmit() {
-        if (!roundActive || roundSubmitted) return;
-
-        // validate inputs? no strict validation, but we require at least one non-empty? not necessary.
-        roundSubmitted = true;
-        submitBtn.disabled = true;
-        setInputsEnabled(false);
-        stopTimer();
-
-        // compute duplicate counts based on current human inputs + AI answers
-        computeDuplicateCounts();
-
-        // Now end round (scoring, feedback)
-        endRound();
-
-        // Additionally, prevent further edits
+function renderLocalFeedback() {
+  const myAns = room.submissions[me.id] || {};
+  const dup = room.lastRound?.dupCount || {};
+  const fb = $('feedbackArea');
+  fb.innerHTML = '';
+  CATEGORIES.forEach(c => {
+    const raw = (myAns[c.key] || '').trim();
+    const v = raw.toLowerCase();
+    const valid = v && startsWith(v, room.letter);
+    const span = document.createElement('span');
+    if (!raw) span.className = 'bad', span.textContent = `✗ ${c.label}: empty`;
+    else if (!valid) span.className = 'bad', span.textContent = `✗ ${c.label}: "${raw}" (wrong letter)`;
+    else {
+      const others = (dup[c.key]?.[v] || 1) - 1;
+      span.className = others > 0 ? 'dup' : 'ok';
+      span.textContent = `✓ ${c.label}: "${raw}"${others > 0 ? ` · +${others*5} dup` : ''}`;
     }
+    fb.appendChild(span);
+  });
+}
 
-    // -----------------------------------------------
-    // NEW ROUND
-    // -----------------------------------------------
-    function startNewRound() {
-        // reset flags
-        roundActive = true;
-        roundSubmitted = false;
-        stopTimer();
+function startNextRoundAsHost() {
+  if (!me.isHost || !room) return;
+  if (room.round >= TOTAL_ROUNDS) {
+    broadcastToGuests({ type: 'gameOver', room });
+    showGameOver();
+    return;
+  }
+  room.round += 1;
+  room.letter = randomLetter();
+  room.submissions = {};
+  broadcastToGuests({ type: 'nextRound', room });
+  mySubmissionMade = false;
+  renderGameUI();
+  startRoundTimer();
+}
 
-        // new letter
-        currentLetter = randomLetter();
-        currentLetterDisplay.textContent = currentLetter;
-        letterHint.textContent = currentLetter;
+/* ===================== GAME OVER ===================== */
+function showGameOver() {
+  clearInterval(timerInterval);
+  clearInterval(betweenInterval);
+  const sorted = room.players.map(p => ({...p, score: room.scores[p.id] || 0}))
+    .sort((a,b) => b.score - a.score);
+  const winner = sorted[0];
+  CATEGORIES.forEach(cat => { const el = $(`in-${cat.key}`); if (el) el.disabled = true; });
+  $('submitBtn').classList.add('hidden');
+  $('waitingBanner').classList.remove('hidden');
+  $('waitingBanner').innerHTML = `🏁 <strong>Game over!</strong> Winner: <strong style="color:#facc15">${escapeHtml(winner.name)} ${winner.avatar}</strong> with ${winner.score} points.`;
+  renderLeaderboard();
+}
 
-        // increment round counter
-        currentRound += 1;
-        roundNumberEl.textContent = currentRound;
+$('leaveGameBtn').onclick = () => {
+  if (peer) { peer.destroy(); peer = null; }
+  hostConn = null; guestConns.clear(); room = null; me = null;
+  showScreen('signin');
+};
 
-        // clear feedback & message
-        feedbackArea.innerHTML = '';
-        messageBox.style.display = 'none';
+/* ===================== SCREEN SWITCH ===================== */
+function showScreen(name) {
+  ['signin','lobby','game'].forEach(s => {
+    $('screen-'+s).classList.toggle('hidden', s !== name);
+  });
+}
+function showConnBanner(text) { const b = $('connBanner'); b.style.display=''; b.textContent = text; }
+function hideConnBanner() { $('connBanner').style.display='none'; }
 
-        // generate AI answers for this round
-        aiRoundAnswers = {};
-        AI_PLAYERS.forEach(ai => {
-            aiRoundAnswers[ai.id] = generateAIAnswers(currentLetter);
-        });
-
-        // build fresh inputs (enabled)
-        buildInputs(currentLetter);
-        setInputsEnabled(true);
-
-        // reset duplicate counts
-        duplicateCounts = {};
-
-        // enable submit, disable new round
-        submitBtn.disabled = false;
-        newRoundBtn.disabled = true;
-
-        // start timer
-        startTimer();
-
-        // sync any UI
-        renderLeaderboard();
-    }
-
-    // initialise first round
-    function initGame() {
-        initLeaderboard();
-        currentLetter = randomLetter();
-        currentLetterDisplay.textContent = currentLetter;
-        letterHint.textContent = currentLetter;
-        currentRound = 1;
-        roundNumberEl.textContent = currentRound;
-
-        // generate AI answers
-        aiRoundAnswers = {};
-        AI_PLAYERS.forEach(ai => {
-            aiRoundAnswers[ai.id] = generateAIAnswers(currentLetter);
-        });
-
-        buildInputs(currentLetter);
-        setInputsEnabled(true);
-        roundActive = true;
-        roundSubmitted = false;
-
-        startTimer();
-
-        submitBtn.disabled = false;
-        newRoundBtn.disabled = true;
-
-        // attach event listeners
-        submitBtn.addEventListener('click', handleSubmit);
-        newRoundBtn.addEventListener('click', () => {
-            startNewRound();
-        });
-
-        // Also handle Enter key on inputs? skip
-    }
-
-    // Start the game
-    initGame();
+/* ===================== AUTO-JOIN VIA URL ?room=CODE ===================== */
+(function autoFillRoomFromURL(){
+  const params = new URLSearchParams(location.search);
+  const code = params.get('room');
+  if (code) {
+    // Pre-select "join" mode and fill the code
+    document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+    document.querySelector('.mode-tab[data-mode="join"]').classList.add('active');
+    pickedMode = 'join';
+    $('roomField').style.display = '';
+    $('roomCodeInput').value = code.toUpperCase();
+    setTimeout(() => $('playerName').focus(), 100);
+  }
+})();
 </script>
 </body>
 </html>
