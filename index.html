@@ -222,11 +222,11 @@
         <button class="btn btn-ghost" id="copyLinkBtn" style="margin-top: 0.8rem; width: 100%; justify-content: center;">📋 Copy Link</button>
 
         <div id="hostControls" class="hidden" style="margin-top: 1.4rem;">
-          <p class="muted" style="margin-bottom: 0.8rem;">You are the <strong style="color:#facc15;">Host</strong>. Start when everyone is ready.</p>
-          <button class="btn btn-primary" id="startGameBtn" style="width:100%; justify-content:center;">▶ Start Game</button>
+          <p class="muted" style="margin-bottom: 0.8rem;">You are the <strong style="color:#facc15;">Host</strong>.</p>
+          <button class="btn btn-primary" id="startGameBtn" style="width:100%; justify-content:center;" disabled>⏳ Waiting…</button>
         </div>
         <div id="guestControls" class="hidden" style="margin-top: 1.4rem;">
-          <p class="muted">Only the host can start the game. Hang tight ✨</p>
+          <p class="muted">Waiting for the host to be ready… game starts automatically when 2+ players have joined ✨</p>
         </div>
       </div>
     </div>
@@ -273,9 +273,10 @@
 <script>
 /* =========================================================
    LETTER RUSH — WebRTC Multiplayer via PeerJS
-   - Host acts as the relay (PeerJS "server" peer)
-   - Guests connect to host and exchange messages
-   - NOTHING is persisted anywhere
+   · Host creates a room; guests join via link
+   · Nothing is stored anywhere
+   · Only real signed-in players appear on the leaderboard
+   · Game auto-starts as soon as 2+ players are in the room
    ========================================================= */
 
 const CATEGORIES = [
@@ -290,6 +291,84 @@ const AVATARS = ['🦊','🐼','🐯','🦄','🐸','🐙','🦉','🐝','🦁',
 const ROUND_TIME = 45;
 const BETWEEN_ROUNDS = 6;
 const TOTAL_ROUNDS = 5;
+const STRICT_MODE = true;
+
+/* ===================== WORD DATABASE ===================== */
+const WORD_DB = {
+  name: new Set([
+    'aaron','abigail','adam','adrian','aisha','alan','albert','alex','alexander','alexandra','alice','alicia','alison','amanda','amber','amelia','amy','andrea','andrew','angela','anita','anna','anne','anthony','antonio','april','arthur','ashley','audrey','aurora','austin','ava','avery',
+    'barbara','barry','beatrice','becky','benjamin','bernard','bethany','betty','beverly','bill','blake','bonnie','boris','bradley','brandon','brenda','brian','brittany','bruce','bryan',
+    'caleb','camila','cameron','carlos','carmen','carol','caroline','carrie','catherine','cathy','cecilia','chad','charles','charlotte','chase','chelsea','cheryl','chloe','chris','christian','christina','christine','christopher','cindy','claire','clara','claudia','cody','colin','connor','craig','crystal','curtis','cynthia',
+    'daisy','dale','daniel','danielle','danny','darlene','darren','dave','david','dawn','dean','debbie','deborah','denise','dennis','derek','diana','diane','diego','donald','donna','doris','dorothy','douglas','dylan',
+    'earl','eddie','edgar','edith','edward','eileen','elaine','eleanor','elena','elias','elijah','elizabeth','ella','ellen','emily','emma','eric','erica','erin','ernest','esther','ethan','eugene','eva','evan','evelyn',
+    'fabian','fatima','felix','fernando','fiona','florence','floyd','frances','francis','frank','fred','frederick',
+    'gabriel','gabriella','gail','gary','gemma','george','georgia','gerald','gina','gladys','glen','gloria','gordon','grace','graham','gregory','gwen',
+    'hailey','hannah','harold','harper','harry','hazel','heather','hector','helen','henry','herbert','holly','howard','hugo',
+    'ian','irene','isaac','isabel','isabella','ivan',
+    'jack','jackie','jacob','jade','jaime','jake','james','jamie','jan','jane','janet','janice','jared','jasmine','jason','javier','jay','jayden','jean','jeff','jeffrey','jenna','jennifer','jenny','jeremy','jerome','jerry','jesse','jessica','jesus','jill','jim','jimmy','joan','joanna','joanne','joe','joel','joey','johanna','john','johnny','jonathan','jordan','jorge','jose','joseph','josh','joshua','joy','joyce','juan','judith','judy','julia','julian','julie','julio','june','justin',
+    'kaitlyn','karen','katherine','kathleen','kathryn','kathy','katie','kayla','keith','kelly','ken','kenneth','kevin','kim','kimberly','kristen','kristin','kyle',
+    'lara','larry','laura','lauren','lawrence','layla','leah','leo','leon','leonard','leslie','lewis','liam','lily','linda','lisa','logan','lois','lori','louis','louise','lucas','lucia','lucy','luis','luke','luna','lydia','lynn',
+    'mabel','mackenzie','madison','maggie','manuel','marc','marcus','margaret','maria','mariah','marilyn','marina','mario','marion','mark','marlene','marsha','martha','martin','mary','mason','mateo','matthew','maureen','maurice','max','maxine','megan','melanie','melinda','melissa','mia','michael','michelle','miguel','mike','mildred','milton','miranda','miriam','mitchell','molly','monica','morgan','murray',
+    'nadia','nancy','naomi','natalie','natasha','nathan','neil','nelson','nicholas','nick','nicole','nina','noah','norma','norman',
+    'olga','oliver','olivia','omar','oscar','owen',
+    'pablo','pamela','patricia','patrick','paul','paula','pedro','peggy','penelope','peter','philip','phillip','phoebe','phyllis','pierre','polly','priscilla',
+    'rachel','ralph','ramon','randy','raquel','raul','ray','raymond','rebecca','regina','rene','renee','ricardo','richard','rick','ricky','rita','robert','roberta','roberto','robin','rodney','roger','roland','ronald','rosa','rose','ross','roy','ruben','ruby','russell','ruth','ryan',
+    'sabrina','sally','salvador','sam','samantha','samuel','sandra','sandy','santiago','sara','sarah','sasha','saul','scott','sean','selena','serena','seth','shane','shannon','sharon','shawn','sheila','sherry','shirley','sierra','silvia','simon','sofia','sonia','sophia','sophie','stacy','stanley','stella','stephanie','stephen','steve','steven','stuart','sue','susan','susie','suzanne','sydney','sylvia',
+    'tamara','tammy','tanya','tara','ted','teresa','terry','tessa','theodore','theresa','thomas','tiffany','tim','timothy','tina','tobias','todd','tom','tommy','tony','tracey','travis','trevor','tricia','trisha','troy','tyler',
+    'ursula',
+    'valerie','vanessa','veronica','victor','victoria','vincent','viola','virginia','vivian',
+    'wade','wallace','walter','wanda','warren','wayne','wendy','wesley','william','willie','wilson',
+    'xander','xavier',
+    'yolanda','yvonne',
+    'zachary','zara','zoe'
+  ]),
+
+  fruit: new Set([
+    'apple','apricot','avocado','banana','blackberry','blueberry','boysenberry','cantaloupe','cherry','clementine','coconut','cranberry','currant','date','dragonfruit','durian','elderberry','fig','gooseberry','grape','grapefruit','guava','honeydew','jackfruit','kiwi','kumquat','lemon','lime','lychee','mango','melon','mulberry','nectarine','olive','orange','papaya','passionfruit','peach','pear','persimmon','pineapple','plantain','plum','pomegranate','pomelo','quince','raspberry','starfruit','strawberry','tangerine','watermelon',
+    'artichoke','arugula','asparagus','beet','beetroot','bell pepper','bok choy','broccoli','brussels sprout','cabbage','carrot','cauliflower','celery','chard','chickpea','chili','collard','corn','cucumber','daikon','eggplant','endive','fennel','garlic','ginger','green bean','kale','kohlrabi','leek','lentil','lettuce','mushroom','mustard green','okra','onion','parsnip','pea','pepper','potato','pumpkin','radish','rhubarb','rutabaga','shallot','spinach','squash','sweet potato','swiss chard','tomato','turnip','yam','zucchini'
+  ]),
+
+  car: new Set([
+    'acura','alfa romeo','alpine','aston martin','audi','bentley','bmw','bugatti','buick','cadillac','chevrolet','chrysler','citroen','dacia','daewoo','daihatsu','dodge','ferrari','fiat','ford','genesis','gmc','honda','hummer','hyundai','infiniti','isuzu','jaguar','jeep','kia','koenigsegg','lamborghini','lancia','land rover','lexus','lincoln','lotus','maserati','maybach','mazda','mclaren','mercedes','mercedes-benz','mercury','mini','mitsubishi','nissan','opel','pagani','peugeot','plymouth','pontiac','porsche','ram','renault','rolls-royce','rover','saab','saleen','saturn','scion','seat','skoda','smart','ssangyong','subaru','suzuki','tesla','toyota','triumph','vauxhall','volkswagen','volvo'
+  ]),
+
+  animal: new Set([
+    'aardvark','albatross','alligator','alpaca','anaconda','angelfish','ant','anteater','antelope','armadillo','axolotl',
+    'baboon','badger','barracuda','bat','bear','beaver','bee','beetle','bison','blackbird','bluebird','bluejay','boar','bobcat','buffalo','butterfly','buzzard',
+    'camel','capybara','cardinal','caribou','cat','caterpillar','catfish','centipede','chameleon','cheetah','chicken','chimpanzee','chinchilla','chipmunk','cobra','cockatoo','cod','condor','cougar','cow','coyote','crab','crane','cricket','crocodile','crow','cuckoo',
+    'deer','dingo','dodo','dog','dolphin','donkey','dove','dragonfly','duck','dugong',
+    'eagle','earthworm','eel','elephant','elk','emu',
+    'falcon','ferret','finch','firefly','flamingo','fly','fox','frog',
+    'gazelle','gecko','gerbil','gibbon','giraffe','gnat','gnu','goat','goldfish','goose','gorilla','grasshopper','grouse','guinea pig','gull',
+    'hamster','hare','hawk','hedgehog','heron','herring','hippopotamus','hornet','horse','hummingbird','hyena',
+    'ibex','ibis','iguana','impala',
+    'jackal','jaguar','jellyfish',
+    'kangaroo','koala','kingfisher','kiwi','komodo dragon',
+    'ladybug','lemming','lemur','leopard','lion','lizard','llama','lobster','lynx',
+    'macaw','magpie','mallard','mammoth','manatee','mantis','meerkat','mink','mole','mongoose','monkey','moose','mosquito','moth','mouse','mule',
+    'narwhal','newt','nightingale',
+    'ocelot','octopus','opossum','orangutan','orca','ostrich','otter','owl','ox',
+    'panda','panther','parakeet','parrot','peacock','pelican','penguin','pheasant','pigeon','piranha','platypus','porcupine','porpoise','possum','prawn','puffin','puma','python',
+    'quail','quokka',
+    'rabbit','raccoon','ram','rat','rattlesnake','raven','reindeer','rhinoceros','robin','rooster',
+    'salamander','salmon','sardine','scorpion','seagull','seahorse','seal','shark','sheep','shrimp','skunk','sloth','snail','snake','sparrow','spider','squid','squirrel','starfish','stingray','stork','swan','swordfish',
+    'tapir','tarantula','termite','tiger','toad','tortoise','toucan','trout','turkey','turtle',
+    'urchin',
+    'vulture',
+    'wallaby','walrus','wasp','weasel','whale','wolf','wolverine','wombat','woodpecker','worm',
+    'yak',
+    'zebra'
+  ]),
+
+  place: new Set([
+    'afghanistan','albania','algeria','andorra','angola','argentina','armenia','australia','austria','azerbaijan','bahamas','bahrain','bangladesh','barbados','belarus','belgium','belize','benin','bhutan','bolivia','bosnia','botswana','brazil','brunei','bulgaria','burkina faso','burundi','cambodia','cameroon','canada','chad','chile','china','colombia','congo','costa rica','croatia','cuba','cyprus','czechia','denmark','djibouti','dominica','ecuador','egypt','eritrea','estonia','ethiopia','fiji','finland','france','gabon','gambia','georgia','germany','ghana','greece','grenada','guatemala','guinea','guyana','haiti','honduras','hungary','iceland','india','indonesia','iran','iraq','ireland','israel','italy','jamaica','japan','jordan','kazakhstan','kenya','kiribati','kuwait','kyrgyzstan','laos','latvia','lebanon','lesotho','liberia','libya','liechtenstein','lithuania','luxembourg','madagascar','malawi','malaysia','maldives','mali','malta','marshall islands','mauritania','mauritius','mexico','micronesia','moldova','monaco','mongolia','montenegro','morocco','mozambique','myanmar','namibia','nauru','nepal','netherlands','new zealand','nicaragua','niger','nigeria','north korea','norway','oman','pakistan','palau','panama','papua new guinea','paraguay','peru','philippines','poland','portugal','qatar','romania','russia','rwanda','samoa','saudi arabia','senegal','serbia','seychelles','sierra leone','singapore','slovakia','slovenia','solomon islands','somalia','south africa','south korea','south sudan','spain','sri lanka','sudan','suriname','sweden','switzerland','syria','taiwan','tajikistan','tanzania','thailand','timor-leste','togo','tonga','trinidad','tunisia','turkey','turkmenistan','tuvalu','uganda','ukraine','united arab emirates','united kingdom','united states','uruguay','uzbekistan','vanuatu','vatican city','venezuela','vietnam','yemen','zambia','zimbabwe',
+    'abidjan','abuja','accra','addis ababa','adelaide','algiers','almaty','amman','amsterdam','ankara','antwerp','athens','atlanta','auckland','baghdad','baku','baltimore','bangalore','bangkok','barcelona','beijing','beirut','belfast','belgrade','berlin','bern','bilbao','birmingham','bogota','boston','bratislava','brazzaville','brisbane','brussels','bucharest','budapest','buenos aires','cairo','calgary','canberra','cape town','caracas','casablanca','chennai','chicago','chisinau','copenhagen','dakar','dallas','damascus','dar es salaam','delhi','denver','dhaka','doha','dubai','dublin','durban','edinburgh','frankfurt','gaborone','geneva','glasgow','guadalajara','guangzhou','hamburg','hanoi','harare','havana','helsinki','hong kong','houston','hyderabad','islamabad','istanbul','jakarta','jeddah','johannesburg','kabul','kampala','karachi','kathmandu','khartoum','kiev','kigali','kingston','kinshasa','kolkata','kuala lumpur','kyiv','lagos','lahore','las vegas','lima','lisbon','ljubljana','london','los angeles','luanda','lusaka','luxembourg','lyon','madrid','manila','maputo','marseille','mexico city','miami','milan','minsk','mogadishu','monrovia','monterrey','montreal','moscow','mumbai','munich','nairobi','naples','new york','nice','nizhny novgorod','osaka','oslo','ottawa','paris','perth','philadelphia','phnom penh','phoenix','podgorica','portland','prague','pretoria','pyongyang','quito','rabat','reykjavik','riga','rio de janeiro','riyadh','rome','saint petersburg','san diego','san francisco','san jose','san salvador','santiago','sao paulo','sapporo','sarajevo','seattle','seoul','shanghai','shenzhen','singapore','skopje','sofia','stockholm','suva','sydney','tallinn','tashkent','tbilisi','tehran','tel aviv','the hague','tirana','tokyo','toronto','tripoli','tunis','ulaanbaatar','valencia','vancouver','vienna','vientiane','vilnius','warsaw','washington','wellington','windhoek','yamoussoukro','yaounde','yerevan','zagreb','zurich'
+  ]),
+
+  object: new Set([
+    'air conditioner','alarm clock','anchor','antenna','apron','ashtray','backpack','bag','ball','balloon','bandage','basket','battery','bed','bench','bicycle','binder','blender','book','bookcase','boot','bottle','bowl','box','bracelet','broom','brush','bucket','button','cabinet','calculator','camera','candle','cane','carpet','cart','cd','chair','chalk','charger','clock','coat','comb','computer','controller','cord','couch','crayon','cup','curtain','cushion','desk','dictionary','dish','door','dresser','drill','drum','dvd','earphone','eraser','fan','fence','file','flag','flashlight','flute','fork','frame','fridge','furniture','guitar','hammer','hanger','hat','headphone','helmet','jacket','jar','jeans','jewelry','kettle','key','keyboard','keychain','knife','ladder','lamp','laptop','lens','letter','lighter','lock','magnet','map','marker','mask','mat','microphone','mirror','mixer','monitor','mop','mouse','mug','nail','necklace','needle','notebook','oven','padlock','paint','pan','paper','pen','pencil','phone','photo','piano','pillow','pipe','plate','plug','pot','purse','quilt','radio','razor','recorder','remote','ring','rope','rug','ruler','sandwich','saw','scarf','scissors','screwdriver','seat','shampoo','shoe','shovel','speaker','sponge','spoon','stamp','stapler','stove','straw','sunglasses','table','tablet','tape','teapot','teddy bear','television','tent','tie','timer','toaster','toothbrush','towel','toy','tray','trumpet','umbrella','vacuum','vase','wallet','watch','whistle','window','wrench','zipper'
+  ])
+};
 
 /* ---------- utility ---------- */
 const $ = id => document.getElementById(id);
@@ -299,25 +378,37 @@ function toast(t, ms=1800) {
   clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove('show'), ms);
 }
 function randomLetter(){ return 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[Math.floor(Math.random()*26)]; }
-function startsWith(s, l){ return s && s.trim().toLowerCase().startsWith(l.toLowerCase()); }
 function escapeHtml(s){ return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 function randomRoomCode(){
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no confusing 0/O/1/I
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let c = ''; for (let i=0;i<6;i++) c += chars[Math.floor(Math.random()*chars.length)];
   return c;
 }
 
+function isValidAnswer(categoryKey, word, letter) {
+  if (!word || !word.trim()) return false;
+  const w = word.trim().toLowerCase();
+  if (!w.startsWith(letter.toLowerCase())) return false;
+  if (STRICT_MODE) {
+    const dict = WORD_DB[categoryKey];
+    if (!dict) return false;
+    return dict.has(w);
+  }
+  return true;
+}
+
 /* ---------- State ---------- */
-let me = null;               // { id, name, avatar, isHost }
-let room = null;             // authoritative room state (host keeps truth)
-let peer = null;             // PeerJS instance
-let hostConn = null;         // guest → host connection
-let guestConns = new Map();  // host: guestId → DataConnection
+let me = null;
+let room = null;
+let peer = null;
+let hostConn = null;
+let guestConns = new Map();
 let timerInterval = null;
 let betweenInterval = null;
 let mySubmissionMade = false;
 let pickedAvatar = AVATARS[0];
 let pickedMode = 'host';
+let autoStartScheduled = false;
 
 /* ===================== SIGN-IN UI ===================== */
 (function buildAvatars(){
@@ -331,7 +422,6 @@ let pickedMode = 'host';
     };
     grid.appendChild(d);
   });
-  // preselect random
   const rand = AVATARS[Math.floor(Math.random()*AVATARS.length)];
   pickedAvatar = rand;
   grid.querySelector(`[data-avatar="${rand}"]`).classList.add('selected');
@@ -388,7 +478,6 @@ function hostRoom() {
     });
 
     peer.on('error', err => {
-      // If ID taken (rare), retry with new code
       if (err.type === 'unavailable-id') {
         peer.destroy();
         hostRoom();
@@ -399,7 +488,6 @@ function hostRoom() {
 
     peer.on('connection', conn => {
       conn.on('open', () => {
-        // Late joiners are blocked if game started
         if (room.started) {
           conn.send({ type: 'rejected', reason: 'Game already started' });
           setTimeout(() => conn.close(), 200);
@@ -414,7 +502,6 @@ function hostRoom() {
           if (guestId) {
             room.players = room.players.filter(p => p.id !== guestId);
             broadcastToGuests({ type: 'roomUpdate', room });
-            renderLobby();
             if (!$('screen-lobby').classList.contains('hidden')) renderLobby();
             if (!$('screen-game').classList.contains('hidden')) renderGameUI();
           }
@@ -447,7 +534,6 @@ function joinRoom(code) {
         clearTimeout(timeout);
         hideConnBanner();
         toast('Joined room ' + code);
-        // Send hello
         conn.send({
           type: 'hello',
           player: { id: me.id, name: me.name, avatar: me.avatar }
@@ -460,7 +546,6 @@ function joinRoom(code) {
       conn.on('close', () => {
         hideConnBanner();
         toast('Host disconnected');
-        // Reset to sign in
         setTimeout(() => {
           if (room) room = null;
           showScreen('signin');
@@ -480,7 +565,6 @@ function joinRoom(code) {
 }
 
 /* ===================== MESSAGE HANDLING ===================== */
-// Host receives from a guest
 function handleGuestMessage(conn, data) {
   switch (data.type) {
     case 'hello': {
@@ -493,17 +577,25 @@ function handleGuestMessage(conn, data) {
         room.scores[data.player.id] = room.scores[data.player.id] || 0;
       }
       conn.metadata = { id: data.player.id };
-      // Send full room state back
       conn.send({ type: 'roomState', room });
-      // Broadcast updated player list to everyone
       broadcastToGuests({ type: 'roomUpdate', room });
       renderLobby();
       toast(data.player.name + ' joined');
+
+      // ✅ AUTO-START when 2+ real players are in
+      if (room.players.length >= 2 && !room.started && !autoStartScheduled) {
+        autoStartScheduled = true;
+        setTimeout(() => {
+          if (!room.started && room.players.length >= 2) {
+            startGameAsHost();
+          }
+          autoStartScheduled = false;
+        }, 1200);
+      }
       break;
     }
     case 'submission': {
       room.submissions[data.playerId] = data.answers;
-      // If all submitted → end round
       if (Object.keys(room.submissions).length === room.players.length) {
         endRoundAsHost();
       }
@@ -512,7 +604,6 @@ function handleGuestMessage(conn, data) {
   }
 }
 
-// Guest receives from host
 function handleHostMessage(data) {
   switch (data.type) {
     case 'roomState':
@@ -562,7 +653,6 @@ function renderLobby() {
   $('roomCode').textContent = room.id;
   $('playerCount').textContent = `(${room.players.length})`;
 
-  // Share link
   const url = location.origin + location.pathname + '?room=' + room.id;
   $('shareLink').innerHTML = `Send this link: <br><strong>${escapeHtml(url)}</strong>`;
 
@@ -584,13 +674,15 @@ function renderLobby() {
     $('hostControls').classList.remove('hidden');
     $('guestControls').classList.add('hidden');
     $('lobbyStatusBanner').textContent = room.players.length < 2
-      ? 'Waiting for more players to join…'
-      : `Ready — ${room.players.length} players in the room. Start when you like!`;
-    $('startGameBtn').disabled = room.players.length < 2;
+      ? '⏳ Waiting for at least 1 more player… (game starts automatically)'
+      : `🚀 Starting in a moment — ${room.players.length} players in the room`;
+    $('startGameBtn').disabled = true;
+    $('startGameBtn').textContent = room.players.length < 2 ? '⏳ Waiting…' : '▶ Auto-starting…';
   } else {
     $('hostControls').classList.add('hidden');
     $('guestControls').classList.remove('hidden');
-    $('lobbyStatusBanner').textContent = 'Waiting for the host to start…';
+    $('lobbyStatusBanner').textContent =
+      '⏳ Game starts automatically when 2+ players have joined.';
   }
 }
 
@@ -605,16 +697,17 @@ $('leaveLobbyBtn').onclick = () => {
   showScreen('signin');
 };
 
-/* ===================== HOST STARTS GAME ===================== */
-$('startGameBtn').onclick = () => {
-  if (!me.isHost || !room) return;
+/* ===================== START GAME (host) ===================== */
+function startGameAsHost() {
+  if (!me.isHost || !room || room.started) return;
   room.started = true;
   room.round = 1;
   room.letter = randomLetter();
   room.submissions = {};
+  room.players.forEach(p => { room.scores[p.id] = 0; });
   broadcastToGuests({ type: 'gameStarted', room });
   enterGameScreen();
-};
+}
 
 /* ===================== GAME UI ===================== */
 function enterGameScreen() {
@@ -637,7 +730,7 @@ function renderGameUI() {
       const wrap = document.createElement('div');
       wrap.className = 'input-group';
       wrap.innerHTML = `<label>${cat.icon} ${cat.label} — <span style="color:#facc15">${room.letter}</span></label>
-        <input id="in-${cat.key}" maxlength="24" autocomplete="off" placeholder="Starts with ${room.letter}…" ${mySubmissionMade ? 'disabled' : ''}/>`;
+        <input id="in-${cat.key}" maxlength="30" autocomplete="off" placeholder="Starts with ${room.letter}…" ${mySubmissionMade ? 'disabled' : ''}/>`;
       container.appendChild(wrap);
     });
     container.dataset.round = String(room.round);
@@ -682,9 +775,7 @@ function startRoundTimer() {
     if (t <= 0) {
       clearInterval(timerInterval);
       if (!mySubmissionMade) submitAnswers(true);
-      // Host will end round when everyone submitted (or after a small grace)
       if (me.isHost) {
-        // If someone hasn't submitted within 2s, force-end
         setTimeout(() => { if (me.isHost && room && room.started) endRoundAsHost(); }, 2000);
       }
     }
@@ -722,29 +813,30 @@ function endRoundAsHost() {
   if (!me.isHost || !room || !room.started) return;
   clearInterval(timerInterval);
 
-  // Count duplicates per category
   const dupCount = {};
   CATEGORIES.forEach(c => dupCount[c.key] = {});
 
+  // count duplicates (only VALID answers)
   room.players.forEach(p => {
     const ans = room.submissions[p.id] || {};
     CATEGORIES.forEach(c => {
-      const v = (ans[c.key] || '').trim().toLowerCase();
-      if (v && startsWith(v, room.letter)) {
-        dupCount[c.key][v] = (dupCount[c.key][v] || 0) + 1;
+      const raw = (ans[c.key] || '').trim();
+      if (isValidAnswer(c.key, raw, room.letter)) {
+        const key = raw.toLowerCase();
+        dupCount[c.key][key] = (dupCount[c.key][key] || 0) + 1;
       }
     });
   });
 
-  // Score everyone
+  // score everyone
   room.players.forEach(p => {
     const ans = room.submissions[p.id] || {};
     let gained = 0;
     CATEGORIES.forEach(c => {
-      const v = (ans[c.key] || '').trim().toLowerCase();
-      if (v && startsWith(v, room.letter)) {
+      const raw = (ans[c.key] || '').trim();
+      if (isValidAnswer(c.key, raw, room.letter)) {
         gained += 10;
-        const others = (dupCount[c.key][v] || 1) - 1;
+        const others = (dupCount[c.key][raw.toLowerCase()] || 1) - 1;
         if (others > 0) gained += others * 5;
       }
     });
@@ -784,12 +876,18 @@ function renderLocalFeedback() {
   fb.innerHTML = '';
   CATEGORIES.forEach(c => {
     const raw = (myAns[c.key] || '').trim();
-    const v = raw.toLowerCase();
-    const valid = v && startsWith(v, room.letter);
     const span = document.createElement('span');
-    if (!raw) span.className = 'bad', span.textContent = `✗ ${c.label}: empty`;
-    else if (!valid) span.className = 'bad', span.textContent = `✗ ${c.label}: "${raw}" (wrong letter)`;
-    else {
+    if (!raw) {
+      span.className = 'bad';
+      span.textContent = `✗ ${c.label}: empty`;
+    } else if (!isValidAnswer(c.key, raw, room.letter)) {
+      span.className = 'bad';
+      const reason = raw.toLowerCase().startsWith(room.letter.toLowerCase())
+        ? 'not a real word'
+        : 'wrong letter';
+      span.textContent = `✗ ${c.label}: "${raw}" (${reason})`;
+    } else {
+      const v = raw.toLowerCase();
       const others = (dup[c.key]?.[v] || 1) - 1;
       span.className = others > 0 ? 'dup' : 'ok';
       span.textContent = `✓ ${c.label}: "${raw}"${others > 0 ? ` · +${others*5} dup` : ''}`;
@@ -848,7 +946,6 @@ function hideConnBanner() { $('connBanner').style.display='none'; }
   const params = new URLSearchParams(location.search);
   const code = params.get('room');
   if (code) {
-    // Pre-select "join" mode and fill the code
     document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
     document.querySelector('.mode-tab[data-mode="join"]').classList.add('active');
     pickedMode = 'join';
