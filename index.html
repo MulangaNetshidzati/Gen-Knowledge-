@@ -127,6 +127,7 @@
   }
   .input-group input:focus { border-color: #facc15; }
   .input-group input:disabled { opacity: 0.55; }
+  .input-group input.autofixed { border-color: #4ade80; box-shadow: 0 0 0 2px rgba(74,222,128,0.18); }
 
   .leaderboard-list { list-style: none; display: flex; flex-direction: column; gap: 0.5rem; max-height: 500px; overflow-y: auto; padding-right: 0.3rem; }
   .leaderboard-list li {
@@ -153,7 +154,7 @@
     background: #101b2f; border: 1px solid #2b3f5d; color: #e6edf7;
     padding: 0.7rem 1.2rem; border-radius: 1rem; font-weight: 600;
     box-shadow: 0 20px 40px -15px rgba(0,0,0,0.7); opacity: 0; pointer-events: none;
-    transition: opacity 0.25s; z-index: 100;
+    transition: opacity 0.25s; z-index: 100; max-width: 92vw; text-align: center;
   }
   .toast.show { opacity: 1; }
   ::-webkit-scrollbar { width: 6px; }
@@ -200,6 +201,7 @@
   .rule:nth-child(3) { animation-delay: 0.45s; }
   .rule:nth-child(4) { animation-delay: 0.6s; }
   .rule:nth-child(5) { animation-delay: 0.75s; }
+  .rule:nth-child(6) { animation-delay: 0.9s; }
   @keyframes ruleIn { to { opacity: 1; transform: translateX(0); } }
   .rule-emoji { font-size: 1.7rem; line-height: 1; flex-shrink: 0; }
   .rule strong { color: #f1f5f9; font-size: 0.98rem; display: block; margin-bottom: 0.2rem; }
@@ -557,6 +559,13 @@
         </div>
       </div>
       <div class="rule">
+        <span class="rule-emoji">🪄</span>
+        <div>
+          <strong>Auto-correct is on</strong>
+          <p>Small typos are fixed automatically (e.g. <em>toyata → toyota</em>). You'll see a green flash when a word is corrected.</p>
+        </div>
+      </div>
+      <div class="rule">
         <span class="rule-emoji">🏆</span>
         <div>
           <strong>Highest score after 26 rounds wins</strong>
@@ -617,7 +626,8 @@
    · Rules screen shown once at the beginning
    · Personal round recap + animated leaderboard cut scene
    · Fullscreen winner on all clients at game over
-   · Categories: Name · Fruit/Veg · Car Brand · Animal · Place · COLOR
+   · Categories: Name · Fruit/Veg · Car Brand · Animal · Place · Color
+   · AUTO-CORRECT: typo-tolerant dictionary matching (Levenshtein)
    ========================================================= */
 
 const CATEGORIES = [
@@ -637,6 +647,8 @@ const STRICT_MODE = true;
 
 /* ===================== WORD DATABASE ===================== */
 const WORD_DB = {
+
+  /* ---------------- NAMES ---------------- */
   name: new Set([
     'aaron','abigail','adam','adrian','aisha','alan','albert','alex','alexander','alexandra','alice','alicia','alison','amanda','amber','amelia','amy','andrea','andrew','angela','anita','anna','anne','anthony','antonio','april','arthur','ashley','audrey','aurora','austin','ava','avery',
     'barbara','barry','beatrice','becky','benjamin','bernard','bethany','betty','beverly','bill','blake','bonnie','boris','bradley','brandon','brenda','brian','brittany','bruce','bryan',
@@ -664,13 +676,92 @@ const WORD_DB = {
     'yolanda','yvonne',
     'zachary','zara','zoe'
   ]),
+
+  /* ---------------- FRUIT / VEG ---------------- */
   fruit: new Set([
-    'apple','apricot','avocado','banana','blackberry','blueberry','boysenberry','cantaloupe','cherry','clementine','coconut','cranberry','currant','date','dragonfruit','durian','elderberry','fig','gooseberry','grape','grapefruit','guava','honeydew','jackfruit','kiwi','kumquat','lemon','lime','lychee','mango','melon','mulberry','nectarine','olive','orange','papaya','passionfruit','peach','pear','persimmon','pineapple','plantain','plum','pomegranate','pomelo','quince','raspberry','starfruit','strawberry','tangerine','watermelon',
-    'artichoke','arugula','asparagus','beet','beetroot','bell pepper','bok choy','broccoli','brussels sprout','cabbage','carrot','cauliflower','celery','chard','chickpea','chili','collard','corn','cucumber','daikon','eggplant','endive','fennel','garlic','ginger','green bean','kale','kohlrabi','leek','lentil','lettuce','mushroom','mustard green','okra','onion','parsnip','pea','pepper','potato','pumpkin','radish','rhubarb','rutabaga','shallot','spinach','squash','sweet potato','swiss chard','tomato','turnip','yam','zucchini'
+    /* ---- FRUITS ---- */
+    'abiu','acai','acerola','ackee','akebi','alligator apple','almond','ambarella','american persimmon','apple','apricot','araza','arhat','avocado',
+    'bael','banana','barbados cherry','barberry','bergamot','betel nut','bilberry','black cherry','black currant','black mulberry','black sapote','blackberry','blood orange','blueberry','bolivian mountain coconut','boysenberry','brazil nut','breadfruit','buddha hand','bunya nut','burdekin plum','bush tomato',
+    'cacao','cactus pear','calabash','camu camu','canary melon','cantaloupe','cape gooseberry','carambola','cashew apple','cassabanana','cempedak','chayote','che','cherimoya','cherry','chico','chokecherry','citron','clementine','cloudberry','coconut','coffee cherry','cola nut','cranberry','crowberry','cupuacu','currant','custard apple',
+    'damson','date','desert lime','dewberry','doubah','dragonfruit','duku','durian',
+    'elderberry','elephant apple','emblic','etrog',
+    'feijoa','fig','finger lime','forest strawberry',
+    'gac','genip','goji berry','gooseberry','grape','grapefruit','greengage','guanabana','guarana','guava',
+    'hackberry','hard kiwi','hawthorn','hazelnut','hog plum','honeyberry','horned melon','huckleberry',
+    'illawarra plum','indian fig','ita palm',
+    'jaboticaba','jackfruit','jambolan','jambul','japanese raisin','jostaberry','jujube','juniper berry',
+    'kaffir lime','kahikatea','kakadu plum','kiwi','kiwi berry','kiwano','kumquat',
+    'langsat','lanzones','lemon','lemon aspen','lime','limequat','lingonberry','loganberry','loquat','lucuma','lychee',
+    'mamey sapote','mandarin','mango','mangosteen','marionberry','mayapple','medlar','melon','miracle fruit','monstera','mountain papaya','mulberry','muskmelon','myrtle',
+    'nance','naranjilla','nectarine','neem','noni','nungu',
+    'ogen melon','olive','orange','oregon grape','otaheite apple',
+    'papaya','passionfruit','pawpaw','peach','pear','pepino','persimmon','pineapple','pitanga','pitaya','plantain','plum','plumcot','pomegranate','pomelo','prickly pear','prune','pulasan',
+    'quandong','quenepa','quince','quinoa',
+    'rambutan','raspberry','red banana','red currant','rose apple','rosehip','rowan',
+    'salal berry','salak','santol','sapodilla','saskatoon berry','sea buckthorn','serviceberry','sour cherry','sour orange','star apple','starfruit','strawberry','sugar apple','sweet lemon','sweet lime',
+    'tamarind','tangelo','tangerine','tayberry','tomatillo','tomato',
+    'ugli fruit','ugni','uva',
+    'vanilla','voavanga',
+    'watermelon','white currant','white sapote','wineberry','wolfberry','wood apple',
+    'xigua','ximenia','xoconostle','xylocarp',
+    'yali pear','yellow plum','yumberry','yuzu',
+    'zebra melon','ziziphus',
+    /* ---- VEGETABLES ---- */
+    'acorn squash','alfalfa sprout','amaranth','artichoke','arugula','asparagus','aubergine','azuki bean',
+    'bamboo shoot','banana pepper','basil','beet','beetroot','bell pepper','bitter melon','bok choy','broccoli','broccoli rabe','brussels sprout','burdock','butternut squash',
+    'cabbage','calabrese','carrot','cassava','cauliflower','celeriac','celery','chard','chickpea','chicory','chili pepper','chinese broccoli','chinese cabbage','chive','collard green','corn','corn salad','courgette','cress','cucumber',
+    'daikon','dandelion green','delicata squash','drumstick',
+    'edamame','eggplant','endive','escarole',
+    'fava bean','fennel','fiddlehead','french bean',
+    'garlic','ginger','gourd','green bean','guar',
+    'horseradish','hubbard squash',
+    'iceberg lettuce','indian pea','italian chicory',
+    'jalapeno','jerusalem artichoke','jicama',
+    'kale','kelp','kidney bean','kohlrabi',
+    'leek','lentil','lettuce','lima bean','lotus root',
+    'mache','marrow','mung bean','mushroom','mustard green',
+    'napa cabbage','nettle','nori',
+    'okra','onion','oyster mushroom',
+    'pak choi','parsnip','pea','peanut','pepper','potato','pumpkin','purslane',
+    'radicchio','radish','rapini','red cabbage','romaine','runner bean','rutabaga',
+    'scallion','seaweed','shallot','snap pea','snow pea','sorrel','soybean','spaghetti squash','spinach','sprout','squash','swede','sweet potato','swiss chard',
+    'taro','turnip','turnip green',
+    'udo',
+    'water chestnut','watercress','wax bean','witloof',
+    'yam','yam bean','yardlong bean','yucca',
+    'zedoary','zucchini'
   ]),
+
+  /* ---------------- CAR BRANDS (worldwide) ---------------- */
   car: new Set([
-    'acura','alfa romeo','alpine','aston martin','audi','bentley','bmw','bugatti','buick','cadillac','chevrolet','chrysler','citroen','dacia','daewoo','daihatsu','dodge','ferrari','fiat','ford','genesis','gmc','honda','hummer','hyundai','infiniti','isuzu','jaguar','jeep','kia','koenigsegg','lamborghini','lancia','land rover','lexus','lincoln','lotus','maserati','maybach','mazda','mclaren','mercedes','mercedes-benz','mercury','mini','mitsubishi','nissan','opel','pagani','peugeot','plymouth','pontiac','porsche','ram','renault','rolls-royce','rover','saab','saleen','saturn','scion','seat','skoda','smart','ssangyong','subaru','suzuki','tesla','toyota','triumph','vauxhall','volkswagen','volvo'
+    'abarth','ac cars','acura','aion','aixam','alfa romeo','allard','alpina','alpine','alvis','amc','apollo','arash','ariel','aro','artega','ascari','aston martin','audi','austin','austin-healey','autobianchi','avanti',
+    'baic','bajaj','baojun','bentley','bertone','bestune','bizzarrini','bmw','bollinger','borgward','brabus','brilliance','bristol','bugatti','buick','byd',
+    'cadillac','callaway','caparo','caterham','changan','changhe','chery','chevrolet','chrysler','citroen','cizeta','corvette','cupra','czinger',
+    'dacia','daewoo','daihatsu','daimler','datsun','david brown','de tomaso','delorean','denza','devon','dodge','dongfeng','donkervoort','drako','ds',
+    'eagle','edsel','elfin','equus','eterniti','exeed',
+    'facel vega','faraday','faw','ferrari','fiat','fisker','foden','force motors','ford','foton','fpv','freightliner','fso','fuso',
+    'gaz','geely','genesis','geo','ginetta','gmc','gordon murray','great wall','gta','gumpert','gwm',
+    'haval','hennessey','hillman','hindustan','holden','honda','hongqi','hozon','hummer','hyundai',
+    'ika','infiniti','innocenti','international','isdera','iso','isuzu','iveco',
+    'jac','jaguar','jeep','jensen','jetta','jmc','kandi','karma','kia','koenigsegg','ktm',
+    'lada','lagonda','lamborghini','lancia','land rover','landwind','laraki','leapmotor','lexus','leyland','li auto','lifan','lincoln','lister','lobini','lordstown','lotus','lucid','luxgen','lynk & co',
+    'mahindra','marcos','marlin','marussia','maserati','mastretta','maybach','mazda','mclaren','melkus','mercedes','mercedes-benz','mercury','mg','microcar','mini','mitsubishi','mitsuoka','morgan','morris','moskvitch',
+    'nio','nissan','noble','nsu',
+    'oldsmobile','opel','ora','oshkosh',
+    'pagani','panoz','perodua','peugeot','plymouth','polaris','polestar','pontiac','porsche','praga','premier','proton','puma','pyeonghwa',
+    'qoros','quant','qvale',
+    'radical','ram','rambler','renault','rezvani','rimac','rinspeed','rivian','roewe','rolls-royce','rover','ruf',
+    'saab','saleen','samsung','sany','saturn','scania','scion','seat','seres','shelby','shuanghuan','singer','skoda','smart','spyker','srt','ssangyong','sterling','studebaker','stutz','subaru','sunbeam','suzuki',
+    'tata','tatra','tesla','toyota','trabant','trident','triumph','tucker','tvr',
+    'uaz','ultima','unimog',
+    'vandenbrink','vauxhall','vector','vencer','venturi','volkswagen','volvo','vuhl',
+    'w motors','wartburg','westfield','wiesmann','willys','workhorse',
+    'xiaomi','xpeng',
+    'yamaha','yulon',
+    'zagato','zastava','zeekr','zender','zenvo','zotye'
   ]),
+
+  /* ---------------- ANIMALS ---------------- */
   animal: new Set([
     'aardvark','albatross','alligator','alpaca','anaconda','angelfish','ant','anteater','antelope','armadillo','axolotl',
     'baboon','badger','barracuda','bat','bear','beaver','bee','beetle','bison','blackbird','bluebird','bluejay','boar','bobcat','buffalo','butterfly','buzzard',
@@ -682,7 +773,7 @@ const WORD_DB = {
     'hamster','hare','hawk','hedgehog','heron','herring','hippopotamus','hornet','horse','hummingbird','hyena',
     'ibex','ibis','iguana','impala',
     'jackal','jaguar','jellyfish',
-    'kangaroo','koala','kingfisher','kiwi','komodo dragon',
+    'kangaroo','kingfisher','kiwi','koala','komodo dragon',
     'ladybug','lemming','lemur','leopard','lion','lizard','llama','lobster','lynx',
     'macaw','magpie','mallard','mammoth','manatee','mantis','meerkat','mink','mole','mongoose','monkey','moose','mosquito','moth','mouse','mule',
     'narwhal','newt','nightingale',
@@ -698,67 +789,118 @@ const WORD_DB = {
     'yak',
     'zebra'
   ]),
+
+  /* ---------------- PLACES: countries, provinces, states, cities ---------------- */
   place: new Set([
-    'afghanistan','albania','algeria','andorra','angola','argentina','armenia','australia','austria','azerbaijan','bahamas','bahrain','bangladesh','barbados','belarus','belgium','belize','benin','bhutan','bolivia','bosnia','botswana','brazil','brunei','bulgaria','burkina faso','burundi','cambodia','cameroon','canada','chad','chile','china','colombia','congo','costa rica','croatia','cuba','cyprus','czechia','denmark','djibouti','dominica','ecuador','egypt','eritrea','estonia','ethiopia','fiji','finland','france','gabon','gambia','georgia','germany','ghana','greece','grenada','guatemala','guinea','guyana','haiti','honduras','hungary','iceland','india','indonesia','iran','iraq','ireland','israel','italy','jamaica','japan','jordan','kazakhstan','kenya','kiribati','kuwait','kyrgyzstan','laos','latvia','lebanon','lesotho','liberia','libya','liechtenstein','lithuania','luxembourg','madagascar','malawi','malaysia','maldives','mali','malta','marshall islands','mauritania','mauritius','mexico','micronesia','moldova','monaco','mongolia','montenegro','morocco','mozambique','myanmar','namibia','nauru','nepal','netherlands','new zealand','nicaragua','niger','nigeria','north korea','norway','oman','pakistan','palau','panama','papua new guinea','paraguay','peru','philippines','poland','portugal','qatar','romania','russia','rwanda','samoa','saudi arabia','senegal','serbia','seychelles','sierra leone','singapore','slovakia','slovenia','solomon islands','somalia','south africa','south korea','south sudan','spain','sri lanka','sudan','suriname','sweden','switzerland','syria','taiwan','tajikistan','tanzania','thailand','timor-leste','togo','tonga','trinidad','tunisia','turkey','turkmenistan','tuvalu','uganda','ukraine','united arab emirates','united kingdom','united states','uruguay','uzbekistan','vanuatu','vatican city','venezuela','vietnam','yemen','zambia','zimbabwe',
-    'abidjan','abuja','accra','addis ababa','adelaide','algiers','almaty','amman','amsterdam','ankara','antwerp','athens','atlanta','auckland','baghdad','baku','baltimore','bangalore','bangkok','barcelona','beijing','beirut','belfast','belgrade','berlin','bern','bilbao','birmingham','bogota','boston','bratislava','brazzaville','brisbane','brussels','bucharest','budapest','buenos aires','cairo','calgary','canberra','cape town','caracas','casablanca','chennai','chicago','chisinau','copenhagen','dakar','dallas','damascus','dar es salaam','delhi','denver','dhaka','doha','dubai','dublin','durban','edinburgh','frankfurt','gaborone','geneva','glasgow','guadalajara','guangzhou','hamburg','hanoi','harare','havana','helsinki','hong kong','houston','hyderabad','islamabad','istanbul','jakarta','jeddah','johannesburg','kabul','kampala','karachi','kathmandu','khartoum','kiev','kigali','kingston','kinshasa','kolkata','kuala lumpur','kyiv','lagos','lahore','las vegas','lima','lisbon','ljubljana','london','los angeles','luanda','lusaka','luxembourg','lyon','madrid','manila','maputo','marseille','mexico city','miami','milan','minsk','mogadishu','monrovia','monterrey','montreal','moscow','mumbai','munich','nairobi','naples','new york','nice','nizhny novgorod','osaka','oslo','ottawa','paris','perth','philadelphia','phnom penh','phoenix','podgorica','portland','prague','pretoria','pyongyang','quito','rabat','reykjavik','riga','rio de janeiro','riyadh','rome','saint petersburg','san diego','san francisco','san jose','san salvador','santiago','sao paulo','sapporo','sarajevo','seattle','seoul','shanghai','shenzhen','singapore','skopje','sofia','stockholm','suva','sydney','tallinn','tashkent','tbilisi','tehran','tel aviv','the hague','tirana','tokyo','toronto','tripoli','tunis','ulaanbaatar','valencia','vancouver','vienna','vientiane','vilnius','warsaw','washington','wellington','windhoek','yamoussoukro','yaounde','yerevan','zagreb','zurich'
+    /* ---- COUNTRIES ---- */
+    'afghanistan','albania','algeria','andorra','angola','antigua and barbuda','argentina','armenia','australia','austria','azerbaijan',
+    'bahamas','bahrain','bangladesh','barbados','belarus','belgium','belize','benin','bhutan','bolivia','bosnia and herzegovina','botswana','brazil','brunei','bulgaria','burkina faso','burundi',
+    'cabo verde','cambodia','cameroon','canada','cape verde','central african republic','chad','chile','china','colombia','comoros','congo','costa rica','croatia','cuba','cyprus','czech republic','czechia',
+    'democratic republic of the congo','denmark','djibouti','dominica','dominican republic',
+    'ecuador','egypt','el salvador','equatorial guinea','eritrea','estonia','eswatini','ethiopia',
+    'fiji','finland','france',
+    'gabon','gambia','georgia','germany','ghana','greece','grenada','guatemala','guinea','guinea-bissau','guyana',
+    'haiti','holland','honduras','hungary',
+    'iceland','india','indonesia','iran','iraq','ireland','israel','italy','ivory coast',
+    'jamaica','japan','jordan',
+    'kazakhstan','kenya','kiribati','kosovo','kuwait','kyrgyzstan',
+    'laos','latvia','lebanon','lesotho','liberia','libya','liechtenstein','lithuania','luxembourg',
+    'madagascar','malawi','malaysia','maldives','mali','malta','marshall islands','mauritania','mauritius','mexico','micronesia','moldova','monaco','mongolia','montenegro','morocco','mozambique','myanmar',
+    'namibia','nauru','nepal','netherlands','new zealand','nicaragua','niger','nigeria','north korea','north macedonia','norway',
+    'oman',
+    'pakistan','palau','palestine','panama','papua new guinea','paraguay','peru','philippines','poland','portugal',
+    'qatar',
+    'romania','russia','rwanda',
+    'saint kitts and nevis','saint lucia','saint vincent and the grenadines','samoa','san marino','sao tome and principe','saudi arabia','senegal','serbia','seychelles','sierra leone','singapore','slovakia','slovenia','solomon islands','somalia','south africa','south korea','south sudan','spain','sri lanka','sudan','suriname','sweden','switzerland','syria',
+    'taiwan','tajikistan','tanzania','thailand','timor-leste','togo','tonga','trinidad and tobago','tunisia','turkey','turkmenistan','tuvalu',
+    'uganda','ukraine','united arab emirates','united kingdom','united states','united states of america','uruguay','uzbekistan',
+    'vanuatu','vatican city','venezuela','vietnam',
+    'yemen',
+    'zambia','zimbabwe',
+    /* ---- PROVINCES / STATES / REGIONS ---- */
+    'alabama','alaska','alberta','anhui','arizona','arkansas','assam','baden-wurttemberg','bavaria','bihar','brandenburg','british columbia',
+    'california','catalonia','chihuahua','colorado','connecticut',
+    'delaware','dubai emirate',
+    'england','extremadura',
+    'flanders','florida','fujian',
+    'gansu','gauteng','greater london','guangdong','guangxi','guizhou','gujarat',
+    'hainan','haryana','hawaii','hebei','heilongjiang','henan','hokkaido','hubei','hunan',
+    'idaho','illinois','indiana','iowa',
+    'jalisco','jiangsu','jiangxi','jilin',
+    'kansas','karnataka','kentucky','kerala','kwaZulu-natal'.toLowerCase(),
+    'liaoning','limburg','lombardy','louisiana',
+    'madhya pradesh','maine','maharashtra','manitoba','maryland','massachusetts','michigan','minnesota','mississippi','missouri','montana',
+    'nebraska','nevada','new brunswick','new hampshire','new jersey','new mexico','new south wales','new york state','newfoundland','north carolina','north dakota','northern ireland','northern territory','northwest territories','nunavut',
+    'odisha','ohio','oklahoma','ontario','oregon',
+    'pennsylvania','punjab','prince edward island',
+    'quebec','queensland','qinghai',
+    'rajasthan','rhode island','rhone-alpes',
+    'saskatchewan','saxony','scotland','shaanxi','shandong','shanghai','shanxi','sichuan','south australia','south carolina','south dakota','sverige',
+    'tamil nadu','tasmania','telangana','tennessee','texas','tuscany',
+    'uttar pradesh','utah',
+    'vermont','victoria','virginia',
+    'wales','washington state','west bengal','west virginia','western australia','wisconsin','wyoming','yukon','yunnan','zealand','zhejiang',
+    /* ---- CITIES ---- */
+    'abidjan','abuja','accra','addis ababa','adelaide','algiers','almaty','amman','amsterdam','ankara','antwerp','athens','atlanta','auckland',
+    'baghdad','baku','baltimore','bangalore','bangkok','barcelona','beijing','beirut','belfast','belgrade','berlin','bern','bilbao','birmingham','bogota','boston','bratislava','brazzaville','brisbane','brussels','bucharest','budapest','buenos aires',
+    'cairo','calgary','canberra','cape town','caracas','casablanca','chennai','chicago','chisinau','copenhagen',
+    'dakar','dallas','damascus','dar es salaam','delhi','denver','dhaka','doha','dubai','dublin','durban',
+    'edinburgh',
+    'frankfurt',
+    'gaborone','geneva','glasgow','guadalajara','guangzhou',
+    'hamburg','hanoi','harare','havana','helsinki','hong kong','houston','hyderabad',
+    'islamabad','istanbul',
+    'jakarta','jeddah','johannesburg',
+    'kabul','kampala','karachi','kathmandu','khartoum','kiev','kigali','kingston','kinshasa','kolkata','kuala lumpur','kyiv',
+    'lagos','lahore','las vegas','lima','lisbon','ljubljana','london','los angeles','luanda','lusaka','lyon',
+    'madrid','manila','maputo','marseille','mexico city','miami','milan','minsk','mogadishu','monrovia','monterrey','montreal','moscow','mumbai','munich',
+    'nairobi','naples','new york','nice','nizhny novgorod',
+    'osaka','oslo','ottawa',
+    'paris','perth','philadelphia','phnom penh','phoenix','podgorica','portland','prague','pretoria','pyongyang',
+    'qingdao','quanzhou','queretaro','quito',
+    'rabat','reykjavik','riga','rio de janeiro','riyadh','rome',
+    'saint petersburg','san diego','san francisco','san jose','san salvador','santiago','sao paulo','sapporo','sarajevo','seattle','seoul','shanghai','shenzhen','skopje','sofia','stockholm','suva','sydney',
+    'tallinn','tashkent','tbilisi','tehran','tel aviv','the hague','tirana','tokyo','toronto','tripoli','tunis',
+    'ulaanbaatar',
+    'valencia','vancouver','vienna','vientiane','vilnius',
+    'warsaw','washington','wellington','windhoek',
+    'xalapa','xiamen','xian',
+    'yamoussoukro','yaounde','yerevan','yokohama','york',
+    'zagreb','zaragoza','zhengzhou','zibo','zurich'
   ]),
+
+  /* ---------------- COLORS (comprehensive) ---------------- */
   color: new Set([
-    // A
-    'almond','amber','amethyst','apricot','aqua','aquamarine','ash','auburn','avocado','azure',
-    // B
-    'beige','black','blush','blue','bronze','brown','burgundy','buttercup',
-    // C
-    'camel','caramel','cerise','cerulean','charcoal','chartreuse','cherry','chestnut','chocolate','cobalt','copper','coral','cream','crimson','cyan',
-    // D
-    'dark blue','dark green','dark red','denim','dandelion','dove','dun',
-    // E
-    'ebony','ecru','eggshell','eggplant','emerald',
-    // F
-    'fawn','firebrick','flax','forest green','fuchsia',
-    // G
-    'gold','goldenrod','grape','gray','green','grey','gunmetal',
-    // H
-    'hazel','honey','honeydew','hot pink',
-    // I
-    'ice blue','indigo','iris','ivory',
-    // J
-    'jade','jasmine','jet',
-    // K
-    'kelly green','khaki','kiwi',
-    // L
-    'lavender','lemon','lilac','lime','linen','liver',
-    // M
-    'magenta','maroon','mauve','mint','moss','mustard',
-    // N
-    'navy','navy blue','neon green','neon pink','nutmeg',
-    // O
-    'ochre','olive','onyx','orange','orchid',
-    // P
-    'peach','pear','periwinkle','pewter','pink','pistachio','plum','powder blue','purple',
-    // Q
-    'quartz','quick silver',
-    // R
-    'red','rose','rose gold','rosy brown','royal blue','ruby','rust',
-    // S
-    'sage','salmon','sapphire','scarlet','sea green','sienna','silver','sky blue','slate','snow',
-    // T
-    'tan','taupe','teal','thistle','tomato','turquoise',
-    // U
-    'ultramarine','umber',
-    // V
-    'vermillion','violet','viridian',
-    // W
-    'wheat','white','wine',
-    // X
-    'xanadu','xanthous',
-    // Y
-    'yellow','yellow-green',
-    // Z
-    'zaffre','zomp'
+    'abalone','absinthe','acajou','acid green','aegean blue','african violet','air force blue','alabaster','alice blue','alizarin crimson','almond','amaranth','amber','amethyst','amethyst purple','antique brass','antique bronze','antique fuchsia','antique white','apple green','apricot','aqua','aquamarine','arctic blue','army green','arsenic','artichoke','ash gray','ash grey','asparagus green','atomic tangerine','auburn','aureolin','avocado green','azure','azure blue',
+    'baby blue','baby pink','baby powder','bahama blue','baker-miller pink','ball blue','banana yellow','barn red','battle gray','bay leaf','beaver','beige','bisque','bismarck blue','bittersweet','black','black bean','black coral','black olive','blanched almond','blast-off bronze','bleu de france','blizzard blue','blond','blue','blue bell','blue gray','blue green','blue sapphire','blue violet','bluish green','blush','blush pink','bone','bottle green','boysenberry','brandy','brass','brick red','bright green','bright lavender','brilliant azure','brilliant green','brilliant lavender','brink pink','british racing green','bronze','bronze yellow','brown','brown sugar','bubblegum pink','bud green','buff','bulgarian rose','burgundy','burnt orange','burnt sienna','burnt umber','butter','buttercream','buttermilk','butterscotch','byzantine','byzantium',
+    'cadmium blue','cadmium green','cadmium orange','cadmium red','cadmium yellow','cafe au lait','cal poly green','cambridge blue','camel','camouflage green','canary','canary yellow','candy apple red','candy pink','capri','caput mortuum','caramel','cardinal','caribbean green','carmine','carmine pink','carnation pink','carnelian','carolina blue','carrot orange','castleton green','catalina blue','celadon','celadon green','celestial blue','cerise','cerulean','cerulean blue','cerulean frost','chamoisee','champagne','charcoal','charcoal gray','chartreuse','cherry','cherry blossom pink','chestnut','china pink','china rose','chinese red','chinese violet','chocolate','chocolate brown','chrome yellow','cinereous','cinnabar','cinnamon','citrine','citron','claret','classic rose','cobalt','cobalt blue','cocoa brown','coconut','coffee','cognac','columbia blue','congo pink','cool gray','copper','copper rose','coquelicot','coral','coral pink','cordovan','corn','cornflower blue','cornsilk','cosmic latte','cotton candy','cream','crimson','crimson red','crystal','crystal blue','cyan','cyan blue','cyber yellow',
+    'daffodil','dandelion','dark blue','dark brown','dark byzantium','dark candy apple red','dark cerulean','dark chestnut','dark coral','dark cyan','dark electric blue','dark goldenrod','dark gray','dark green','dark jungle green','dark khaki','dark lava','dark liver','dark magenta','dark midnight blue','dark moss green','dark olive green','dark orange','dark orchid','dark pastel green','dark pink','dark purple','dark raspberry','dark red','dark salmon','dark scarlet','dark sea green','dark sienna','dark sky blue','dark slate blue','dark slate gray','dark spring green','dark tan','dark turquoise','dark vanilla','dark violet','dartmouth green','davys grey','deep cerise','deep champagne','deep chestnut','deep coffee','deep fuchsia','deep jungle green','deep lemon','deep lilac','deep magenta','deep mauve','deep moss green','deep pink','deep purple','deep red','deep saffron','deep sky blue','deep space sparkle','deep taupe','deep teal','denim','denim blue','desert','desert sand','diamond','dim gray','dodger blue','dogwood rose','dollar bill','dove gray','drab','drab dark brown','duke blue','dusty rose','dusty taupe','dutch white',
+    'eagle green','earth yellow','ebony','ecru','eggplant','eggshell','egyptian blue','electric blue','electric crimson','electric cyan','electric green','electric indigo','electric lavender','electric lime','electric orange','electric pink','electric purple','electric red','electric ultramarine','electric violet','electric yellow','emerald','emerald green','eminence','english green','english lavender','english red','english vermillion','english violet','eton blue','espresso','evergreen',
+    'fallow','falu red','fandango','fawn','fern green','field drab','fiery rose','fire engine red','firebrick','flame','flax','flirt','floral white','fluorescent orange','forest green','french beige','french bistre','french blue','french fuchsia','french lilac','french lime','french mauve','french pink','french raspberry','french rose','french sky blue','french violet','frostbite','fuchsia','fuchsia pink','fulvous','fuzzy wuzzy',
+    'gainsboro','gamboge','generic viridian','ghost white','glaucous','glossy grape','gold','gold fusion','golden brown','golden poppy','golden yellow','goldenrod','gotham green','granite gray','grape','grape green','grape purple','gray','gray blue','gray green','gray purple','gray wolf','green','green blue','green cyan','green lizard','green sheen','green yellow','grullo','gunmetal','gypsy',
+    'halaya ube','harlequin','harvest gold','heat wave','heliotrope','heliotrope gray','hollywood cerise','honey','honeydew','honolulu blue','hot fuchsia','hot magenta','hot pink','hunter green','hurricane',
+    'ice blue','icterine','illuminated emerald','imperial blue','imperial purple','imperial red','inchworm','indanthrone blue','india green','indian red','indian yellow','indigo','indigo dye','international klein blue','international orange','iris','iridescent','iron','isabelline','ivory',
+    'jade','jade green','japanese carmine','japanese indigo','japanese violet','jasmine','jasper','jelly bean','jet','jet black','jonquil','june bud','jungle green',
+    'kelly green','keppel','khaki','kiwi','kobicha','kombu green','ksu purple',
+    'lapis lazuli','laser lemon','laurel green','lava','lavender','lavender blue','lavender blush','lavender gray','lavender pink','lavender purple','lawn green','lemon','lemon chiffon','lemon curry','lemon glacier','lemon lime','lemon yellow','liberty','light blue','light brown','light carmine pink','light coral','light cornflower blue','light crimson','light cyan','light deep pink','light fuchsia pink','light goldenrod yellow','light gray','light green','light khaki','light orange','light orchid','light pastel purple','light periwinkle','light pink','light red','light salmon','light sea green','light sky blue','light slate gray','light steel blue','light taupe','light turquoise','light violet','light yellow','lilac','lilac luster','lime','lime green','limerick','lincoln green','linen','lion','liver','liver chestnut','livid','london fog','london sky',
+    'macaroni and cheese','madder','magenta','magenta haze','magic mint','magnolia','mahogany','maize','majorelle blue','malachite','manatee','mandarin','mango','mango tango','mantis','mardi gras','marigold','maroon','mauve','mauve taupe','mauvelous','maximum blue','maximum blue green','maximum blue purple','maximum green','maximum green yellow','maximum purple','maximum red','maximum red purple','maximum yellow','maximum yellow red','may green','maya blue','medium aquamarine','medium blue','medium candy apple red','medium carmine','medium champagne','medium electric blue','medium jungle green','medium lavender magenta','medium orchid','medium purple','medium red violet','medium ruby','medium sea green','medium sky blue','medium slate blue','medium spring green','medium taupe','medium turquoise','medium tuscan red','medium vermilion','medium violet red','mellow apricot','mellow yellow','melon','metallic blue','metallic bronze','metallic gold','metallic sea green','metallic sunburst','mexican pink','midnight','midnight blue','midnight green','mikado yellow','milk','milk chocolate','mimosa','mindaro','ming','mint','mint cream','mint green','misty rose','moccasin','mocha','mode beige','moonstone blue','mordant red 19','moss','moss green','mountain meadow','mountbatten pink','mulberry','mustard','mustard green','myrtle green',
+    'nadeshiko pink','napier green','naples yellow','navajo white','navy','navy blue','navy purple','neon blue','neon carrot','neon fuchsia','neon green','neon pink','neon purple','neon red','new car','new york pink','nickel','non-photo blue','north texas green','nutmeg','nyanza',
+    'ocean blue','ocean green','ochre','old burgundy','old gold','old lace','old lavender','old mauve','old moss green','old rose','old silver','olive','olive drab','olive green','onyx','opera mauve','orange','orange peel','orange red','orange yellow','orchid','orchid pink','outer space','oxblood','oxford blue',
+    'pacific blue','pakistan green','palatinate blue','palatinate purple','pale aqua','pale blue','pale brown','pale carmine','pale cerulean','pale chestnut','pale copper','pale cornflower blue','pale cyan','pale gold','pale goldenrod','pale green','pale lavender','pale magenta','pale pink','pale plum','pale purple','pale red violet','pale robin egg blue','pale silver','pale spring bud','pale taupe','pale turquoise','pale violet','pale violet red','pale yellow','pansy purple','paolo veronese green','papaya whip','paradise pink','paris green','paris white','parsley green','pastel blue','pastel brown','pastel gray','pastel green','pastel grey','pastel orange','pastel pink','pastel purple','pastel red','pastel violet','pastel yellow','patriarch','peach','peach orange','peach puff','peach yellow','pear','pearl','pearl aqua','periwinkle','peru','petunia','phlox','phthalo blue','phthalo green','picton blue','pictorial carmine','piggy pink','pine green','pink','pink flamingo','pink lace','pink panther','pink sherbet','pistachio','platinum','plum','plum blossom','plum purple','pomelo','popstar','portland orange','powder blue','princeton orange','process cyan','process magenta','prussian blue','psychedelic purple','puce','puce red','pullman brown','pumpkin','purple','purple heart','purple mountain majesty','purple navy','purple pizzazz','purple taupe','purpureus',
+    'quartz','queen blue','queen pink','quick silver','quinacridone magenta','quicksilver',
+    'radical red','raisin black','rajah','raspberry','raspberry glace','raspberry pink','raspberry rose','raw sienna','raw umber','razzle dazzle rose','razzmatazz','razzmic berry','rebecca purple','red','red brown','red columbine','red orange','red purple','red sienna','red violet','redwood','regalia','resolution blue','rhythm','rich black','rich brilliant lavender','rich carmine','rich electric blue','rich lavender','rich lilac','rich maroon','rifle green','roast coffee','robin egg blue','rocket metallic','roman silver','rose','rose bonbon','rose dust','rose ebony','rose gold','rose madder','rose pink','rose quartz','rose red','rose taupe','rose vale','rosewood','rosso corsa','rosy brown','royal blue','royal fuchsia','royal purple','royal yellow','ruber','ruby','ruby red','rufous','russet','russian green','russian violet','rust','rusty red',
+    'sacramento state green','saddle brown','safety orange','safety yellow','saffron','sage','sage green','salmon','salmon pink','sand','sand dune','sandstone','sandy brown','sap green','sapphire','sapphire blue','saratoga','satin sheen gold','scarlet','scarlet red','school bus yellow','screamin green','sea blue','sea green','sea serpent','seal brown','seashell','selective yellow','sepia','shadow','shadow blue','shampoo','shamrock green','sheen green','shimmering blush','shiny shamrock','shocking pink','sienna','silver','silver chalice','silver lake blue','silver pink','silver sand','sinopia','sizzling red','sizzling sunrise','skobeloff','sky blue','sky magenta','slate','slate blue','slate gray','slimy green','smalt','smitten','smoky black','smoky topaz','snow','solid pink','sonic silver','space cadet','space gray','spanish blue','spanish carmine','spanish gray','spanish green','spanish orange','spanish pink','spanish red','spanish sky blue','spanish violet','spanish viridian','spicy mix','spring bud','spring frost','spring green','star command blue','steel blue','steel pink','steel teal','stil de grain yellow','straw','strawberry','strawberry blush','strawberry red','sunburnt','sunglow','sunset','sunset orange','super pink','sweet brown','syracuse orange',
+    'tan','tangelo','tangerine','tangerine yellow','tango pink','taupe','taupe gray','tea green','tea rose','teal','teal blue','teal deer','teal green','teal purple','terra cotta','thistle','thin air','thulian pink','tickle me pink','tiffany blue','timberwolf','titan white','tomato','toolbox','topaz','tractor red','tropical rain forest','tropical violet','true blue','tufts blue','tulip','tumbleweed','turquoise','turquoise blue','turquoise green','tuscan brown','tuscan red','tuscan tan','tuscany','twilight lavender','tyrian purple',
+    'ube','ultra blue','ultra pink','ultra red','ultramarine','ultramarine blue','umber','unbleached silk','united nations blue','university of california gold','unmellow yellow','up forest green','up maroon','ups dell green','uranium blue','uranian blue',
+    'vanilla','vanilla ice','vegas gold','vehicle blue','venetian red','verdigris','verdun green','vermilion','veronica','very light azure','very light blue','very light malachite green','very pale yellow','violet','violet blue','violet red','viridian','viridian green','vista blue','vivid auburn','vivid burgundy','vivid cerise','vivid crimson','vivid gamboge','vivid lime green','vivid malachite','vivid orange','vivid orchid','vivid raspberry','vivid red','vivid sky blue','vivid tangerine','vivid vermilion','vivid violet','volt',
+    'warm black','water','water blue','watermelon','watermelon red','wenge','wheat','white','white smoke','wild blue yonder','wild orchid','wild strawberry','willpower orange','windsor tan','wine','wine dregs','wine red','winter sky','winter wizard','wisteria','wood brown',
+    'xanadu','xanthic','xanthous','x11 green',
+    'yale blue','yam','yankees blue','yellow','yellow green','yellow orange','yellow rose','yellow sunshine',
+    'zaffre','zand','zap','zinnwaldite','zinc','zomp'
   ])
 };
 
-/* ---------- utility ---------- */
+/* ===================== UTILITIES ===================== */
 const $ = id => document.getElementById(id);
 const uid = () => Math.random().toString(36).slice(2,10);
 function toast(t, ms=1800) {
@@ -779,10 +921,87 @@ function shuffleArray(arr) {
   }
   return a;
 }
+
+/* ===================== AUTO-CORRECT ENGINE ===================== */
+/* Lazily-built index: DICT_INDEX[category][letter] = [words...] */
+const DICT_INDEX = {};
+
+function getLetterIndex(catKey, letter) {
+  if (!DICT_INDEX[catKey]) DICT_INDEX[catKey] = {};
+  const L = (letter || '').toLowerCase();
+  if (!DICT_INDEX[catKey][L]) {
+    const dict = WORD_DB[catKey];
+    DICT_INDEX[catKey][L] = dict ? [...dict].filter(w => w.startsWith(L)) : [];
+  }
+  return DICT_INDEX[catKey][L];
+}
+
+/* Levenshtein distance with early bail-out */
+function levenshtein(a, b, maxDist) {
+  const al = a.length, bl = b.length;
+  if (Math.abs(al - bl) > maxDist) return maxDist + 1;
+  let prev = new Array(bl + 1);
+  let cur  = new Array(bl + 1);
+  for (let j = 0; j <= bl; j++) prev[j] = j;
+  for (let i = 1; i <= al; i++) {
+    cur[0] = i;
+    let rowMin = cur[0];
+    const ca = a.charCodeAt(i - 1);
+    for (let j = 1; j <= bl; j++) {
+      const cost = ca === b.charCodeAt(j - 1) ? 0 : 1;
+      const v = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + cost);
+      cur[j] = v;
+      if (v < rowMin) rowMin = v;
+    }
+    if (rowMin > maxDist) return maxDist + 1;
+    const tmp = prev; prev = cur; cur = tmp;
+  }
+  return prev[bl];
+}
+
+/* Clean a raw user string */
+function cleanWord(raw) {
+  return String(raw || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9\s&\-']/g, '')
+    .replace(/\s+/g, ' ');
+}
+
+/* Return the best dictionary match for a typo, or the cleaned word itself */
+function autocorrectWord(catKey, raw, letter) {
+  const w = cleanWord(raw);
+  if (!w) return '';
+  const dict = WORD_DB[catKey];
+  if (!dict) return w;
+  if (dict.has(w)) return w;                 // already perfect
+
+  const candidates = getLetterIndex(catKey, letter);
+  if (!candidates.length) return w;
+
+  const maxDist = w.length <= 4 ? 1 : 2;
+  let best = null;
+  let bestDist = maxDist + 1;
+
+  for (let i = 0; i < candidates.length; i++) {
+    const cand = candidates[i];
+    if (Math.abs(cand.length - w.length) > maxDist) continue;
+    const d = levenshtein(w, cand, maxDist);
+    if (d < bestDist) {
+      bestDist = d;
+      best = cand;
+      if (d === 0) break;
+    }
+  }
+  return best || w;
+}
+
+/* Validate (expects an already-normalised lowercase word) */
 function isValidAnswer(categoryKey, word, letter) {
   if (!word || !word.trim()) return false;
-  const w = word.trim().toLowerCase();
-  if (!w.startsWith(letter.toLowerCase())) return false;
+  const w = cleanWord(word);
+  if (!w) return false;
+  if (!letter || !w.startsWith(letter.toLowerCase())) return false;
   if (STRICT_MODE) {
     const dict = WORD_DB[categoryKey];
     if (!dict) return false;
@@ -1145,8 +1364,15 @@ function renderGameUI() {
       const wrap = document.createElement('div');
       wrap.className = 'input-group';
       wrap.innerHTML = `<label>${cat.icon} ${cat.label} — <span style="color:#facc15">${room.letter}</span></label>
-        <input id="in-${cat.key}" maxlength="30" autocomplete="off" placeholder="Starts with ${room.letter}…" ${mySubmissionMade ? 'disabled' : ''}/>`;
+        <input id="in-${cat.key}" maxlength="30" autocomplete="off" autocapitalize="off"
+               spellcheck="false" placeholder="Starts with ${room.letter}…" ${mySubmissionMade ? 'disabled' : ''}/>`;
       container.appendChild(wrap);
+
+      const input = wrap.querySelector('input');
+      input.addEventListener('blur', () => autoFixField(cat.key, input));
+      input.addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); autoFixField(cat.key, input); }
+      });
     });
     container.dataset.round = String(room.round);
     $('submitBtn').disabled = mySubmissionMade;
@@ -1155,6 +1381,20 @@ function renderGameUI() {
     $('waitingBanner').classList.add('hidden');
   }
   renderLeaderboard();
+}
+
+/* Live auto-correct when a field loses focus */
+function autoFixField(catKey, input) {
+  if (!input || input.disabled) return;
+  const raw = input.value;
+  if (!raw.trim()) return;
+  const fixed = autocorrectWord(catKey, raw, room ? room.letter : null);
+  if (fixed && fixed !== cleanWord(raw)) {
+    input.value = fixed;
+    input.classList.add('autofixed');
+    setTimeout(() => input.classList.remove('autofixed'), 1200);
+    toast(`🪄 Auto-corrected: ${raw.trim()} → ${fixed}`, 1500);
+  }
 }
 
 function renderLeaderboard() {
@@ -1216,10 +1456,19 @@ function submitAnswers(auto) {
   CATEGORIES.forEach(cat => { const el = $(`in-${cat.key}`); if (el) el.disabled = true; });
 
   const answers = {};
+  let fixedCount = 0;
   CATEGORIES.forEach(cat => {
     const el = $(`in-${cat.key}`);
-    answers[cat.key] = el ? el.value.trim() : '';
+    const raw = el ? el.value : '';
+    const fixed = autocorrectWord(cat.key, raw, room.letter);
+    if (el && raw.trim() && fixed && fixed !== cleanWord(raw)) {
+      el.value = fixed;
+      fixedCount++;
+    }
+    answers[cat.key] = fixed;
   });
+
+  if (fixedCount > 0) toast(`🪄 Auto-corrected ${fixedCount} answer${fixedCount>1?'s':''}`, 1600);
 
   if (me.isHost) {
     room.submissions[me.id] = answers;
@@ -1234,6 +1483,17 @@ function endRoundAsHost() {
   if (!me.isHost || !room || !room.started) return;
   clearInterval(timerInterval);
 
+  /* --- Normalise every submission with the auto-correct engine --- */
+  room.players.forEach(p => {
+    const ans = room.submissions[p.id] || {};
+    const fixed = {};
+    CATEGORIES.forEach(c => {
+      const raw = ans[c.key] || '';
+      fixed[c.key] = raw.trim() ? autocorrectWord(c.key, raw, room.letter) : '';
+    });
+    room.submissions[p.id] = fixed;
+  });
+
   const prevRanks = {};
   const prevSorted = room.players
     .map(p => ({ id: p.id, score: room.scores[p.id] || 0 }))
@@ -1247,7 +1507,7 @@ function endRoundAsHost() {
     CATEGORIES.forEach(c => {
       const raw = (ans[c.key] || '').trim();
       if (isValidAnswer(c.key, raw, room.letter)) {
-        const key = raw.toLowerCase();
+        const key = cleanWord(raw);
         dupCount[c.key][key] = (dupCount[c.key][key] || 0) + 1;
       }
     });
@@ -1260,7 +1520,7 @@ function endRoundAsHost() {
       const raw = (ans[c.key] || '').trim();
       if (isValidAnswer(c.key, raw, room.letter)) {
         gained += 10;
-        const others = (dupCount[c.key][raw.toLowerCase()] || 1) - 1;
+        const others = (dupCount[c.key][cleanWord(raw)] || 1) - 1;
         if (others > 0) gained += others * 5;
       }
     });
@@ -1307,7 +1567,7 @@ function computeMyRoundSummary() {
     let dupBonus = 0;
     if (valid) {
       pts = 10;
-      const others = (dup[c.key]?.[raw.toLowerCase()] || 1) - 1;
+      const others = (dup[c.key]?.[cleanWord(raw)] || 1) - 1;
       if (others > 0) dupBonus = others * 5;
       pts += dupBonus;
     }
