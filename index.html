@@ -375,30 +375,108 @@
     display: flex; align-items: center; justify-content: center;
     opacity: 0; pointer-events: none;
     transition: opacity 0.6s ease;
-    overflow-y: auto;
+    overflow: hidden;
     padding: 2rem 1rem;
   }
   .winner-screen.show { opacity: 1; pointer-events: auto; }
+
+  /* 🎆 Fireworks canvas — sits behind everything */
+  #fireworksCanvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 0;
+  }
+
   .winner-content {
+    position: relative;
+    z-index: 2;
     max-width: 560px; width: 100%; padding: 1rem;
     text-align: center;
     margin: auto;
   }
+
+  /* ✨ Sparkle overlay above content but non-interactive */
+  .winner-sparkles {
+    position: absolute; inset: 0;
+    pointer-events: none;
+    z-index: 3;
+    overflow: hidden;
+  }
+
+  .sparkle {
+    position: absolute;
+    pointer-events: none;
+    will-change: transform, opacity;
+    color: #fde68a;
+    filter: drop-shadow(0 0 6px #facc15) drop-shadow(0 0 12px rgba(250,204,21,0.6));
+    animation: sparkleFloat 2.4s cubic-bezier(0.2, 0.7, 0.3, 1) forwards;
+    user-select: none;
+  }
+  .sparkle.pink { color: #f9a8d4; filter: drop-shadow(0 0 6px #ec4899) drop-shadow(0 0 12px rgba(236,72,153,0.6)); }
+  .sparkle.cyan { color: #a5f3fc; filter: drop-shadow(0 0 6px #06b6d4) drop-shadow(0 0 12px rgba(6,182,212,0.6)); }
+  .sparkle.white { color: #ffffff; filter: drop-shadow(0 0 8px #fff) drop-shadow(0 0 16px rgba(255,255,255,0.7)); }
+
+  @keyframes sparkleFloat {
+    0%   { opacity: 0; transform: translate(0, 0) scale(0) rotate(0deg); }
+    15%  { opacity: 1; transform: translate(0, -6px) scale(1.15) rotate(45deg); }
+    55%  { opacity: 1; transform: translate(var(--dx, 0), -34px) scale(1) rotate(180deg); }
+    100% { opacity: 0; transform: translate(var(--dx, 0), -70px) scale(0.3) rotate(340deg); }
+  }
+
+  /* Sparkle ring that orbits the winner avatar */
+  .winner-avatar-wrap {
+    position: relative;
+    display: inline-block;
+    margin-bottom: 0.4rem;
+  }
+
   .winner-trophy {
     font-size: 6rem; line-height: 1;
     animation: bounceTrophy 1.2s ease infinite alternate;
     filter: drop-shadow(0 0 30px rgba(250,204,21,0.7));
   }
   @keyframes bounceTrophy { from { transform: translateY(0) scale(1); } to { transform: translateY(-10px) scale(1.05); } }
-  .winner-title {
-    font-size: 1.2rem; letter-spacing: 6px; color: #facc15;
-    font-weight: 800; margin: 0.6rem 0 1.5rem;
-  }
+
   .winner-avatar {
     font-size: 4.5rem; margin-bottom: 0.4rem;
     animation: popAv 0.6s ease 0.2s backwards;
+    position: relative;
+    z-index: 2;
+    filter: drop-shadow(0 0 22px rgba(250,204,21,0.55));
   }
   @keyframes popAv { from { transform: scale(0); } to { transform: scale(1); } }
+
+  /* Rotating halo behind the winner avatar */
+  .winner-halo {
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 180px; height: 180px;
+    margin: -90px 0 0 -90px;
+    border-radius: 50%;
+    background: conic-gradient(from 0deg,
+      rgba(250,204,21,0) 0deg,
+      rgba(250,204,21,0.35) 60deg,
+      rgba(250,204,21,0) 120deg,
+      rgba(250,204,21,0) 180deg,
+      rgba(236,72,153,0.3) 240deg,
+      rgba(250,204,21,0) 300deg,
+      rgba(250,204,21,0) 360deg);
+    animation: haloSpin 6s linear infinite;
+    z-index: 1;
+    pointer-events: none;
+    filter: blur(6px);
+  }
+  @keyframes haloSpin { to { transform: rotate(360deg); } }
+
+  .winner-title {
+    font-size: 1.2rem; letter-spacing: 6px; color: #facc15;
+    font-weight: 800; margin: 0.6rem 0 1.5rem;
+    position: relative;
+  }
+
   .winner-name {
     font-size: 2rem; font-weight: 800; color: #f8fafc;
     margin-bottom: 0.3rem;
@@ -423,6 +501,7 @@
   .winner-row.first {
     background: linear-gradient(135deg, #2a2208, #1a2a44);
     border-color: #facc15;
+    box-shadow: 0 0 26px -8px rgba(250,204,21,0.6);
   }
   .winner-row .w-rk { font-weight: 800; color: #facc15; width: 1.8rem; text-align: center; }
   .winner-row .w-av { font-size: 1.4rem; }
@@ -780,7 +859,6 @@
     <div class="rules-title">How to Play Letter Rush</div>
     <div class="rules-list">
 
-      <!-- ⭐ NEW: Call centre rule — first and highlighted -->
       <div class="rule rule-urgent">
         <span class="rule-emoji">📞</span>
         <div>
@@ -861,12 +939,17 @@
   </div>
 </div>
 
-<!-- ========== WINNER OVERLAY ========== -->
+<!-- ========== WINNER OVERLAY (with fireworks + sparkles) ========== -->
 <div class="winner-screen" id="winnerScreen">
+  <canvas id="fireworksCanvas"></canvas>
+  <div class="winner-sparkles" id="winnerSparkles"></div>
   <div class="winner-content">
-    <div class="winner-trophy">🏆</div>
+    <div class="winner-avatar-wrap">
+      <div class="winner-halo"></div>
+      <div class="winner-trophy">🏆</div>
+      <div class="winner-avatar" id="winnerAvatar">🦊</div>
+    </div>
     <div class="winner-title">GAME OVER</div>
-    <div class="winner-avatar" id="winnerAvatar">🦊</div>
     <div class="winner-name" id="winnerName">Player</div>
     <div class="winner-score" id="winnerScore">0 points</div>
     <div class="winner-sub">Final Standings</div>
@@ -884,11 +967,11 @@
    · Manual host start
    · Rules screen shown once at the beginning
    · Personal round recap + animated leaderboard cut scene
-   · Fullscreen winner on all clients at game over
+   · Fullscreen winner with FIREWORKS + SPARKLES
    · Categories: Name · Fruit/Veg · Car Brand · Animal · Place · Color
    · AUTO-CORRECT: typo-tolerant dictionary matching (Levenshtein)
    · SCORING: +10 per correct answer, −5 penalty per matching answer
-   · ⭐ CALL CENTER MODE: anyone can trigger a pause — synced to ALL players
+   · ⭐ CALL CENTER MODE: customer calls pause everyone (manual, synced)
    ========================================================= */
 
 const CATEGORIES = [
@@ -905,12 +988,11 @@ const TOTAL_ROUNDS = 26;
 const CUT_SCENE_MS = 5500;
 const RULES_DURATION = 10;
 const STRICT_MODE = true;
-const DUP_PENALTY = 5;   /* points removed per matching other player */
+const DUP_PENALTY = 5;
 
 /* ===================== WORD DATABASE ===================== */
 const WORD_DB = {
 
-  /* ---------------- NAMES ---------------- */
   name: new Set([
     'aaron','abigail','adam','adrian','aisha','alan','albert','alex','alexander','alexandra','alice','alicia','alison','amanda','amber','amelia','amy','andrea','andrew','angela','anita','anna','anne','anthony','antonio','april','arthur','ashley','audrey','aurora','austin','ava','avery',
     'barbara','barry','beatrice','becky','benjamin','bernard','bethany','betty','beverly','bill','blake','bonnie','boris','bradley','brandon','brenda','brian','brittany','bruce','bryan',
@@ -939,7 +1021,6 @@ const WORD_DB = {
     'zachary','zara','zoe'
   ]),
 
-  /* ---------------- FRUIT / VEG ---------------- */
   fruit: new Set([
     'abiu','acai','acerola','ackee','akebi','alligator apple','almond','ambarella','american persimmon','apple','apricot','araza','arhat','avocado',
     'bael','banana','barbados cherry','barberry','bergamot','betel nut','bilberry','black cherry','black currant','black mulberry','black sapote','blackberry','blood orange','blueberry','bolivian mountain coconut','boysenberry','brazil nut','breadfruit','buddha hand','bunya nut','burdekin plum','bush tomato',
@@ -992,7 +1073,6 @@ const WORD_DB = {
     'zedoary','zucchini'
   ]),
 
-  /* ---------------- CAR BRANDS (worldwide) ---------------- */
   car: new Set([
     'abarth','ac cars','acura','aion','aixam','alfa romeo','allard','alpina','alpine','alvis','amc','apollo','arash','ariel','aro','artega','ascari','aston martin','audi','austin','austin-healey','autobianchi','avanti',
     'baic','bajaj','baojun','bentley','bertone','bestune','bizzarrini','bmw','bollinger','borgward','brabus','brilliance','bristol','bugatti','buick','byd',
@@ -1021,7 +1101,6 @@ const WORD_DB = {
     'zagato','zastava','zeekr','zender','zenvo','zotye'
   ]),
 
-  /* ---------------- ANIMALS ---------------- */
   animal: new Set([
     'aardvark','albatross','alligator','alpaca','anaconda','angelfish','ant','anteater','antelope','armadillo','axolotl',
     'baboon','badger','barracuda','bat','bear','beaver','bee','beetle','bison','blackbird','bluebird','bluejay','boar','bobcat','buffalo','butterfly','buzzard',
@@ -1050,7 +1129,6 @@ const WORD_DB = {
     'zebra'
   ]),
 
-  /* ---------------- PLACES: countries, provinces, states, cities ---------------- */
   place: new Set([
     'afghanistan','albania','algeria','andorra','angola','antigua and barbuda','argentina','armenia','australia','austria','azerbaijan',
     'bahamas','bahrain','bangladesh','barbados','belarus','belgium','belize','benin','bhutan','bolivia','bosnia and herzegovina','botswana','brazil','brunei','bulgaria','burkina faso','burundi',
@@ -1126,7 +1204,6 @@ const WORD_DB = {
     'zagreb','zaragoza','zhengzhou','zibo','zurich'
   ]),
 
-  /* ---------------- COLORS (comprehensive) ---------------- */
   color: new Set([
     'abalone','absinthe','acajou','acid green','aegean blue','african violet','air force blue','alabaster','alice blue','alizarin crimson','almond','amaranth','amber','amethyst','amethyst purple','antique brass','antique bronze','antique fuchsia','antique white','apple green','apricot','aqua','aquamarine','arctic blue','army green','arsenic','artichoke','ash gray','ash grey','asparagus green','atomic tangerine','auburn','aureolin','avocado green','azure','azure blue',
     'baby blue','baby pink','baby powder','bahama blue','baker-miller pink','ball blue','banana yellow','barn red','battle gray','bay leaf','beaver','beige','bisque','bismarck blue','bittersweet','black','black bean','black coral','black olive','blanched almond','blast-off bronze','bleu de france','blizzard blue','blond','blue','blue bell','blue gray','blue green','blue sapphire','blue violet','bluish green','blush','blush pink','bone','bottle green','boysenberry','brandy','brass','brick red','bright green','bright lavender','brilliant azure','brilliant green','brilliant lavender','brink pink','british racing green','bronze','bronze yellow','brown','brown sugar','bubblegum pink','bud green','buff','bulgarian rose','burgundy','burnt orange','burnt sienna','burnt umber','butter','buttercream','buttermilk','butterscotch','byzantine','byzantium',
@@ -1280,11 +1357,11 @@ let pickedAvatar = AVATARS[0];
 let pickedMode = 'host';
 
 /* ⭐ CALL CENTER STATE ⭐ */
-let onCall = false;                    /* local: is the overlay showing? */
+let onCall = false;
 let callStartTime = 0;
 let callTickInterval = null;
-let pausedBy = null;                   /* who triggered the current pause */
-let lastTimerValue = ROUND_TIME;       /* remembers where we paused */
+let pausedBy = null;
+let lastTimerValue = ROUND_TIME;
 
 /* ===================== SIGN-IN UI ===================== */
 (function buildAvatars(){
@@ -1464,8 +1541,6 @@ function handleGuestMessage(conn, data) {
       room.submissions[data.playerId] = data.answers;
       break;
     }
-
-    /* ⭐ CALL CENTER — guest requests a pause / resume, host decides ⭐ */
     case 'customerCallRequest': {
       if (!room.paused) hostTriggerCall(data.playerName || 'A player');
       break;
@@ -1522,8 +1597,6 @@ function handleHostMessage(data) {
       hideCutScene();
       showGameOver();
       break;
-
-    /* ⭐ CALL CENTER — host broadcasts pause/resume to all guests ⭐ */
     case 'callStarted':
       showCallOverlay(data.pausedBy);
       break;
@@ -1717,7 +1790,6 @@ function startRoundTimer() {
   timerEl.textContent = t;
 
   timerInterval = setInterval(() => {
-    /* ⭐ If a customer call is active for anyone, pause for everyone ⭐ */
     if (onCall) return;
 
     t--;
@@ -1776,7 +1848,6 @@ function endRoundAsHost() {
   if (!me.isHost || !room || !room.started) return;
   clearInterval(timerInterval);
 
-  /* --- Normalise every submission with the auto-correct engine --- */
   room.players.forEach(p => {
     const ans = room.submissions[p.id] || {};
     const fixed = {};
@@ -1793,7 +1864,6 @@ function endRoundAsHost() {
     .sort((a,b) => b.score - a.score);
   prevSorted.forEach((p, i) => { prevRanks[p.id] = i + 1; });
 
-  /* Count how many players gave each valid answer per category */
   const dupCount = {};
   CATEGORIES.forEach(c => dupCount[c.key] = {});
   room.players.forEach(p => {
@@ -1807,7 +1877,6 @@ function endRoundAsHost() {
     });
   });
 
-  /* Award +10 per correct, −5 per matching other player */
   room.players.forEach(p => {
     const ans = room.submissions[p.id] || {};
     let gained = 0;
@@ -1816,7 +1885,7 @@ function endRoundAsHost() {
       if (isValidAnswer(c.key, raw, room.letter)) {
         gained += 10;
         const others = (dupCount[c.key][cleanWord(raw)] || 1) - 1;
-        if (others > 0) gained -= others * DUP_PENALTY;   /* ← penalty */
+        if (others > 0) gained -= others * DUP_PENALTY;
       }
     });
     room.scores[p.id] = (room.scores[p.id] || 0) + gained;
@@ -2015,6 +2084,235 @@ function startNextRoundAsHost() {
   startRoundTimer();
 }
 
+/* =====================================================================
+   🎆  FIREWORKS ENGINE  🎆
+   Canvas-based particle system: rockets launch from the bottom,
+   burst into colourful radial sparks with gravity + drag + fade.
+   ===================================================================== */
+const Fireworks = (() => {
+  const canvas = $('fireworksCanvas');
+  const ctx = canvas ? canvas.getContext('2d') : null;
+  let W = 0, H = 0;
+  let rafId = null;
+  let running = false;
+  let lastSpawn = 0;
+  let rockets = [];
+  let particles = [];
+  let dpr = 1;
+
+  const PALETTE = [
+    '#facc15', '#f59e0b', '#fb7185', '#f472b6',
+    '#a78bfa', '#60a5fa', '#22d3ee', '#4ade80',
+    '#ffffff', '#fde68a'
+  ];
+
+  function resize(){
+    if (!canvas) return;
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = canvas.clientWidth  || window.innerWidth;
+    H = canvas.clientHeight || window.innerHeight;
+    canvas.width  = Math.floor(W * dpr);
+    canvas.height = Math.floor(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  function spawnRocket(){
+    const x = W * (0.12 + Math.random() * 0.76);
+    const targetY = H * (0.10 + Math.random() * 0.35);
+    const color = PALETTE[Math.floor(Math.random() * PALETTE.length)];
+    rockets.push({
+      x, y: H + 10,
+      vx: (Math.random() - 0.5) * 0.8,
+      vy: -(H * 0.012 + Math.random() * H * 0.005),
+      targetY,
+      color,
+      trail: []
+    });
+  }
+
+  function burst(x, y, color){
+    const count = 60 + Math.floor(Math.random() * 40);
+    const twoTone = Math.random() < 0.5
+      ? PALETTE[Math.floor(Math.random() * PALETTE.length)]
+      : color;
+
+    for (let i = 0; i < count; i++){
+      const angle = (Math.PI * 2) * (i / count) + Math.random() * 0.08;
+      const speed = 1.6 + Math.random() * 3.4;
+      particles.push({
+        x, y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        life: 1,
+        decay: 0.011 + Math.random() * 0.012,
+        size: 1.4 + Math.random() * 1.8,
+        color: Math.random() < 0.5 ? color : twoTone
+      });
+    }
+  }
+
+  function step(ts){
+    if (!running) return;
+    rafId = requestAnimationFrame(step);
+
+    /* fade trail */
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.fillStyle = 'rgba(0,0,0,0.16)';
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalCompositeOperation = 'lighter';
+
+    /* spawn rockets */
+    if (ts - lastSpawn > 380 + Math.random() * 420){
+      lastSpawn = ts;
+      spawnRocket();
+    }
+
+    /* update rockets */
+    for (let i = rockets.length - 1; i >= 0; i--){
+      const r = rockets[i];
+      r.x += r.vx;
+      r.y += r.vy;
+      r.vy += 0.06;   /* gravity */
+
+      r.trail.push({ x: r.x, y: r.y });
+      if (r.trail.length > 7) r.trail.shift();
+
+      /* draw trail */
+      for (let t = 0; t < r.trail.length; t++){
+        const p = r.trail[t];
+        const alpha = (t + 1) / r.trail.length * 0.9;
+        ctx.beginPath();
+        ctx.fillStyle = r.color;
+        ctx.globalAlpha = alpha;
+        ctx.arc(p.x, p.y, 1.6, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+
+      /* burst on target or apex */
+      if (r.y <= r.targetY || r.vy >= 0){
+        burst(r.x, r.y, r.color);
+        rockets.splice(i, 1);
+      }
+    }
+
+    /* update particles */
+    for (let i = particles.length - 1; i >= 0; i--){
+      const p = particles[i];
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vx *= 0.985;
+      p.vy *= 0.985;
+      p.vy += 0.035;   /* gravity */
+      p.life -= p.decay;
+
+      if (p.life <= 0){
+        particles.splice(i, 1);
+        continue;
+      }
+
+      ctx.globalAlpha = Math.max(0, p.life);
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+      ctx.fill();
+
+      /* subtle glow */
+      ctx.globalAlpha = Math.max(0, p.life * 0.22);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size * p.life * 2.6, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
+  }
+
+  function start(){
+    if (!canvas || running) return;
+    resize();
+    /* prime with a couple of bursts so the sky isn't empty on reveal */
+    setTimeout(() => { if (running) burst(W * 0.3, H * 0.35, PALETTE[0]); }, 200);
+    setTimeout(() => { if (running) burst(W * 0.7, H * 0.28, PALETTE[4]); }, 500);
+    running = true;
+    lastSpawn = performance.now();
+    rafId = requestAnimationFrame(step);
+  }
+
+  function stop(){
+    running = false;
+    if (rafId) cancelAnimationFrame(rafId);
+    rafId = null;
+    rockets = [];
+    particles = [];
+    if (ctx) {
+      ctx.clearRect(0, 0, W, H);
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+    }
+  }
+
+  window.addEventListener('resize', () => { if (running) resize(); });
+
+  return { start, stop };
+})();
+
+/* =====================================================================
+   ✨  SPARKLE EMITTER  ✨
+   Spawns tiny twinkling glyphs that drift up and fade.
+   ===================================================================== */
+const Sparkles = (() => {
+  const container = $('winnerSparkles');
+  let intervalId = null;
+  const SHAPES = ['✦', '✧', '✨', '★', '✩', '❋', '❊', '✺'];
+  const COLORS = ['', 'pink', 'cyan', 'white'];
+
+  function spawnOne(){
+    if (!container) return;
+    const el = document.createElement('span');
+    el.className = 'sparkle ' + COLORS[Math.floor(Math.random() * COLORS.length)];
+    el.textContent = SHAPES[Math.floor(Math.random() * SHAPES.length)];
+
+    /* Anchor most sparkles around the winner avatar area */
+    const rect = container.getBoundingClientRect();
+    const centerX = rect.width / 2;
+    const anchorY = Math.min(rect.height * 0.30, 320);   /* ~avatar/trophy zone */
+
+    const spread = Math.min(rect.width * 0.36, 320);
+    const x = centerX + (Math.random() - 0.5) * spread * 2;
+    const y = anchorY + (Math.random() - 0.5) * 140;
+
+    const size = 8 + Math.random() * 14;          /* px */
+    const dx   = (Math.random() - 0.5) * 60;      /* horizontal drift */
+    const dur  = 1.8 + Math.random() * 1.4;       /* seconds */
+
+    el.style.left = (x - size / 2) + 'px';
+    el.style.top  = (y - size / 2) + 'px';
+    el.style.fontSize = size + 'px';
+    el.style.setProperty('--dx', dx + 'px');
+    el.style.animationDuration = dur + 's';
+
+    container.appendChild(el);
+    setTimeout(() => { if (el.parentNode) el.parentNode.removeChild(el); }, dur * 1000 + 200);
+  }
+
+  function start(){
+    stop();
+    /* Seed the scene immediately */
+    for (let i = 0; i < 14; i++) setTimeout(spawnOne, i * 60);
+    /* Keep them coming */
+    intervalId = setInterval(() => {
+      spawnOne();
+      if (Math.random() < 0.35) spawnOne();   /* occasional double */
+    }, 170);
+  }
+
+  function stop(){
+    if (intervalId) { clearInterval(intervalId); intervalId = null; }
+    if (container) container.innerHTML = '';
+  }
+
+  return { start, stop };
+})();
+
 /* ===================== GAME OVER (winner screen) ===================== */
 function showGameOver() {
   if (onCall) hideCallOverlay();
@@ -2049,12 +2347,28 @@ function showGameOver() {
     wl.appendChild(li);
   });
 
-  $('winnerScreen').classList.add('show');
+  const screen = $('winnerScreen');
+  screen.classList.add('show');
+
+  /* 🎆 Launch fireworks + ✨ sparkles shortly after the screen fades in */
+  setTimeout(() => {
+    if (screen.classList.contains('show')) {
+      Fireworks.start();
+      Sparkles.start();
+    }
+  }, 350);
+}
+
+/* Stop the effects whenever the winner screen is dismissed */
+function stopWinnerEffects(){
+  Fireworks.stop();
+  Sparkles.stop();
 }
 
 /* ===================== LEAVE ===================== */
 $('leaveGameBtn').onclick = () => {
   if (onCall) hideCallOverlay();
+  stopWinnerEffects();
   if (peer) { peer.destroy(); peer = null; }
   hostConn = null; guestConns.clear(); room = null; me = null;
   hideCutScene();
@@ -2068,23 +2382,31 @@ function showScreen(name) {
   ['signin','lobby','game'].forEach(s => {
     $('screen-'+s).classList.toggle('hidden', s !== name);
   });
-  /* Show the floating Customer Call button only during the game */
   const btn = $('customerCallBtn');
   if (btn) btn.style.display = (name === 'game') ? '' : 'none';
-  /* Leaving the game? Hide any active call overlay. */
   if (name !== 'game' && onCall) hideCallOverlay();
+  /* Stop winner effects whenever we leave the winner context */
+  if (name !== 'game') {
+    /* Do NOT auto-stop when game is still running — we only stop here if the winner screen isn't showing */
+  }
 }
+
+/* Extra safety: stop effects when the winner screen loses .show */
+const winnerScreenEl = $('winnerScreen');
+if (winnerScreenEl) {
+  const mo = new MutationObserver(() => {
+    if (!winnerScreenEl.classList.contains('show')) stopWinnerEffects();
+  });
+  mo.observe(winnerScreenEl, { attributes: true, attributeFilter: ['class'] });
+}
+
 function showConnBanner(text) { const b = $('connBanner'); b.style.display=''; b.textContent = text; }
 function hideConnBanner() { $('connBanner').style.display='none'; }
 
 /* =====================================================================
    ⭐⭐  CALL CENTER MODE  ⭐⭐
-   · Anyone can trigger a pause — the HOST relays it to ALL players.
-   · No automatic/simulated calls.
-   · Timers on every client freeze while the pause is active.
    ===================================================================== */
 
-/* ---- Host-side authoritative actions ---- */
 function hostTriggerCall(sourceName) {
   if (!me.isHost || !room) return;
   if (room.paused) return;
@@ -2103,10 +2425,8 @@ function hostEndCall() {
   hideCallOverlay();
 }
 
-/* ---- Local overlay helpers (used by both host and guests) ---- */
 function showCallOverlay(source) {
   if (onCall) {
-    /* Already showing — just update the source line */
     const line = $('callSourceLine');
     if (line) line.innerHTML = `Triggered by <strong>${escapeHtml(source || '—')}</strong>`;
     return;
@@ -2115,29 +2435,22 @@ function showCallOverlay(source) {
   pausedBy = source || null;
   callStartTime = Date.now();
 
-  /* Disable inputs */
   CATEGORIES.forEach(cat => {
     const el = $(`in-${cat.key}`);
     if (el) el.disabled = true;
   });
   $('submitBtn').disabled = true;
-
-  /* Grey out timer */
   $('timerDisplay').classList.add('paused');
 
-  /* Update source line + reset elapsed */
   const line = $('callSourceLine');
   if (line) line.innerHTML = `Triggered by <strong>${escapeHtml(source || '—')}</strong>`;
   const elapsedEl = $('customerCallOverlay').querySelector('.call-elapsed');
   if (elapsedEl) elapsedEl.textContent = '0:00';
 
-  /* Show overlay */
   $('customerCallOverlay').classList.add('show');
 
-  /* Toast */
   toast(`📞 Customer call — triggered by ${source || 'someone'}`, 2200);
 
-  /* Live elapsed ticker */
   clearInterval(callTickInterval);
   callTickInterval = setInterval(() => {
     const secs = Math.floor((Date.now() - callStartTime) / 1000);
@@ -2151,11 +2464,9 @@ function hideCallOverlay() {
   pausedBy = null;
   clearInterval(callTickInterval);
 
-  /* Hide overlay */
   $('customerCallOverlay').classList.remove('show');
   $('timerDisplay').classList.remove('paused');
 
-  /* Re-enable inputs if the round is still live and we haven't submitted */
   if (!mySubmissionMade && room && room.started && !$('screen-game').classList.contains('hidden')) {
     CATEGORIES.forEach(cat => {
       const el = $(`in-${cat.key}`);
@@ -2168,22 +2479,18 @@ function hideCallOverlay() {
   toast(`✅ Client handled (${formatDuration(secs)}) — back to the game`, 2200);
 }
 
-/* ---- Trigger button ---- */
 $('customerCallBtn').addEventListener('click', () => {
-  /* Only during a live round */
   if (!room || !room.started) return;
   if ($('screen-game').classList.contains('hidden')) return;
-  if (onCall) return;               /* already paused */
+  if (onCall) return;
 
   if (me.isHost) {
     hostTriggerCall(me.name);
   } else {
-    /* Ask host to trigger the pause for everyone */
     hostConn.send({ type: 'customerCallRequest', playerName: me.name });
   }
 });
 
-/* ---- Resume button ---- */
 $('resumeFromCallBtn').addEventListener('click', () => {
   if (!onCall) return;
 
