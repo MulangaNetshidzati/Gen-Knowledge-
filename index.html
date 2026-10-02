@@ -113,6 +113,7 @@
   }
   .timer-big { font-size: 2.4rem; font-weight: 800; color: #facc15; min-width: 3.4rem; text-align: center; transition: color 0.2s; }
   .timer-big.warn { color: #f87171; animation: pulse 0.8s infinite; }
+  .timer-big.paused { color: #64748b; opacity: 0.55; animation: none; }
   @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.5;} }
 
   .game-grid { display: grid; grid-template-columns: 1fr 340px; gap: 1.4rem; }
@@ -154,7 +155,7 @@
     background: #101b2f; border: 1px solid #2b3f5d; color: #e6edf7;
     padding: 0.7rem 1.2rem; border-radius: 1rem; font-weight: 600;
     box-shadow: 0 20px 40px -15px rgba(0,0,0,0.7); opacity: 0; pointer-events: none;
-    transition: opacity 0.25s; z-index: 100; max-width: 92vw; text-align: center;
+    transition: opacity 0.25s; z-index: 200; max-width: 92vw; text-align: center;
   }
   .toast.show { opacity: 1; }
   ::-webkit-scrollbar { width: 6px; }
@@ -197,15 +198,26 @@
     animation: ruleIn 0.5s ease forwards;
   }
   .rule:nth-child(1) { animation-delay: 0.15s; }
-  .rule:nth-child(2) { animation-delay: 0.3s; }
+  .rule:nth-child(2) { animation-delay: 0.30s; }
   .rule:nth-child(3) { animation-delay: 0.45s; }
-  .rule:nth-child(4) { animation-delay: 0.6s; }
+  .rule:nth-child(4) { animation-delay: 0.60s; }
   .rule:nth-child(5) { animation-delay: 0.75s; }
-  .rule:nth-child(6) { animation-delay: 0.9s; }
+  .rule:nth-child(6) { animation-delay: 0.90s; }
+  .rule:nth-child(7) { animation-delay: 1.05s; }
   @keyframes ruleIn { to { opacity: 1; transform: translateX(0); } }
   .rule-emoji { font-size: 1.7rem; line-height: 1; flex-shrink: 0; }
   .rule strong { color: #f1f5f9; font-size: 0.98rem; display: block; margin-bottom: 0.2rem; }
   .rule p { color: #93a7c4; font-size: 0.85rem; line-height: 1.45; }
+  .rule p em { color: #facc15; font-style: normal; font-weight: 700; }
+
+  /* Highlighted call-centre rule */
+  .rule.rule-urgent {
+    background: linear-gradient(135deg, rgba(60,10,15,0.55), rgba(20,10,14,0.55));
+    border-color: rgba(239,68,68,0.4);
+    box-shadow: 0 0 0 1px rgba(239,68,68,0.15) inset, 0 0 30px -12px rgba(239,68,68,0.6);
+  }
+  .rule.rule-urgent strong { color: #fca5a5; }
+
   .rules-footer { text-align: center; }
   .rules-countdown {
     color: #93a7c4; font-size: 0.95rem;
@@ -416,6 +428,203 @@
   .winner-row .w-av { font-size: 1.4rem; }
   .winner-row .w-nm { flex: 1; font-weight: 700; }
   .winner-row .w-sc { font-weight: 800; color: #facc15; }
+
+  /* ============ CUSTOMER CALL (CALL CENTER MODE) ============ */
+
+  /* Floating call button — only visible during game */
+  .call-btn {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    z-index: 60;
+    background: linear-gradient(135deg, #ef4444, #b91c1c);
+    color: #fff;
+    border: none;
+    border-radius: 999px;
+    padding: 0.95rem 1.5rem;
+    font-weight: 800;
+    font-size: 0.95rem;
+    letter-spacing: 0.4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    box-shadow: 0 14px 34px -10px rgba(239,68,68,0.8);
+    transition: transform 0.2s ease, box-shadow 0.3s ease;
+    animation: callBtnPulse 2.6s ease-in-out infinite;
+  }
+  .call-btn:hover {
+    transform: translateY(-3px) scale(1.04);
+    box-shadow: 0 20px 44px -10px rgba(239,68,68,1);
+  }
+  .call-btn:active { transform: translateY(-1px) scale(1); }
+  @keyframes callBtnPulse {
+    0%, 100% { box-shadow: 0 14px 34px -10px rgba(239,68,68,0.8), 0 0 0 0 rgba(239,68,68,0.55); }
+    50%      { box-shadow: 0 14px 34px -10px rgba(239,68,68,0.8), 0 0 0 14px rgba(239,68,68,0); }
+  }
+  .call-btn .call-emoji {
+    display: inline-block;
+    font-size: 1.15rem;
+    animation: callShake 1.8s ease-in-out infinite;
+    transform-origin: 50% 50%;
+  }
+  @keyframes callShake {
+    0%, 60%, 100% { transform: rotate(0); }
+    10% { transform: rotate(-18deg); }
+    25% { transform: rotate(18deg); }
+    40% { transform: rotate(-12deg); }
+    55% { transform: rotate(12deg); }
+  }
+  @media (max-width: 620px) {
+    .call-btn { bottom: 1rem; right: 1rem; padding: 0.8rem 1.1rem; font-size: 0.85rem; }
+    .call-btn .call-label { display: none; }
+  }
+
+  /* Fullscreen call overlay */
+  .call-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 95;
+    background: radial-gradient(circle at 50% 42%, rgba(60,8,12,0.97) 0%, rgba(8,2,4,0.995) 100%);
+    backdrop-filter: blur(22px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.35s ease;
+    padding: 1.5rem 1rem;
+    overflow-y: auto;
+  }
+  .call-overlay.show { opacity: 1; pointer-events: auto; }
+
+  .call-card {
+    max-width: 480px;
+    width: 100%;
+    text-align: center;
+    padding: 2.2rem 1.6rem 1.8rem;
+    background: rgba(22, 10, 14, 0.7);
+    border: 1px solid rgba(239,68,68,0.38);
+    border-radius: 2rem;
+    box-shadow: 0 40px 90px -25px rgba(239,68,68,0.6), 0 0 0 1px rgba(239,68,68,0.12) inset;
+    animation: callCardIn 0.55s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  @keyframes callCardIn {
+    from { transform: scale(0.82); opacity: 0; }
+    to   { transform: scale(1);    opacity: 1; }
+  }
+
+  .call-icon-wrap {
+    position: relative;
+    width: 130px;
+    height: 130px;
+    margin: 0 auto 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .call-icon-wrap::before,
+  .call-icon-wrap::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 2px solid #ef4444;
+    animation: callRing 2s ease-out infinite;
+  }
+  .call-icon-wrap::after { animation-delay: 1s; }
+  @keyframes callRing {
+    0%   { transform: scale(0.55); opacity: 1; }
+    100% { transform: scale(1.55); opacity: 0; }
+  }
+  .call-icon {
+    font-size: 4.4rem;
+    animation: callIconShake 0.7s ease-in-out infinite;
+    filter: drop-shadow(0 0 24px rgba(239,68,68,0.9));
+    transform-origin: 50% 50%;
+  }
+  @keyframes callIconShake {
+    0%, 100% { transform: rotate(0); }
+    20% { transform: rotate(-14deg); }
+    40% { transform: rotate(14deg); }
+    60% { transform: rotate(-9deg); }
+    80% { transform: rotate(9deg); }
+  }
+
+  .call-title {
+    font-size: 1.55rem;
+    font-weight: 800;
+    letter-spacing: 3px;
+    color: #fca5a5;
+    text-transform: uppercase;
+    margin-bottom: 0.4rem;
+    text-shadow: 0 0 22px rgba(239,68,68,0.7);
+  }
+  .call-subtitle {
+    color: #fca5a5;
+    opacity: 0.78;
+    font-size: 0.92rem;
+    margin-bottom: 1.4rem;
+    line-height: 1.5;
+  }
+  .call-elapsed-wrap {
+    display: inline-block;
+    padding: 0.7rem 1.5rem;
+    background: rgba(0,0,0,0.45);
+    border-radius: 999px;
+    border: 1px solid rgba(239,68,68,0.35);
+    margin-bottom: 1.5rem;
+  }
+  .call-elapsed-label {
+    font-size: 0.66rem;
+    text-transform: uppercase;
+    letter-spacing: 1.8px;
+    color: #fca5a5;
+    opacity: 0.75;
+    display: block;
+    margin-bottom: 0.15rem;
+    font-weight: 700;
+  }
+  .call-elapsed {
+    font-family: ui-monospace, monospace;
+    font-size: 1.45rem;
+    font-weight: 800;
+    color: #fca5a5;
+    letter-spacing: 1px;
+  }
+
+  .call-btn-resume {
+    background: linear-gradient(135deg, #4ade80, #16a34a);
+    color: #052e16;
+    border: none;
+    border-radius: 1.1rem;
+    padding: 1rem 2rem;
+    font-weight: 800;
+    font-size: 1rem;
+    cursor: pointer;
+    letter-spacing: 0.5px;
+    box-shadow: 0 16px 36px -12px rgba(74,222,128,0.8);
+    transition: transform 0.2s ease, box-shadow 0.3s ease;
+    width: 100%;
+    margin-bottom: 0.8rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.55rem;
+  }
+  .call-btn-resume:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 22px 44px -12px rgba(74,222,128,1);
+  }
+  .call-btn-resume:active { transform: translateY(0); }
+
+  .call-hint {
+    font-size: 0.78rem;
+    color: #fca5a5;
+    opacity: 0.62;
+    line-height: 1.55;
+  }
+  .call-hint em { color: #facc15; font-style: normal; font-weight: 700; }
 </style>
 </head>
 <body>
@@ -526,12 +735,47 @@
 
 </div>
 
+<!-- ========== FLOATING CALL BUTTON (call center) ========== -->
+<button class="call-btn" id="customerCallBtn" title="Incoming customer call"
+        style="display:none;">
+  <span class="call-emoji">📞</span><span class="call-label">Customer Call</span>
+</button>
+
+<!-- ========== CUSTOMER CALL OVERLAY ========== -->
+<div class="call-overlay" id="customerCallOverlay">
+  <div class="call-card">
+    <div class="call-icon-wrap">
+      <div class="call-icon">📞</div>
+    </div>
+    <div class="call-title">Customer Call</div>
+    <div class="call-subtitle">Attend to the client — the game is paused.</div>
+    <div class="call-elapsed-wrap">
+      <span class="call-elapsed-label">On call for</span>
+      <span class="call-elapsed">0:00</span>
+    </div>
+    <button class="call-btn-resume" id="resumeFromCallBtn">
+      ✅ Client handled · Resume Game
+    </button>
+    <p class="call-hint">Your timer is <em>frozen</em> while you're on the call. Take your time.</p>
+  </div>
+</div>
+
 <!-- ========== RULES OVERLAY ========== -->
 <div class="rules-screen" id="rulesScreen">
   <div class="rules-content">
     <div class="rules-icon">🎯</div>
     <div class="rules-title">How to Play Letter Rush</div>
     <div class="rules-list">
+
+      <!-- ⭐ NEW: Call centre rule — first and highlighted -->
+      <div class="rule rule-urgent">
+        <span class="rule-emoji">📞</span>
+        <div>
+          <strong>Customer calls always come first</strong>
+          <p>This game is designed for <em>call center teams</em>. When a customer calls, hit the red <em>Customer Call</em> button (bottom-right). The game <em>pauses</em>, your timer <em>freezes</em>, and inputs lock. Handle the client, then click <em>Resume Game</em>. Calls may also ring in <em>automatically</em> — just attend and come back.</p>
+        </div>
+      </div>
+
       <div class="rule">
         <span class="rule-emoji">📝</span>
         <div>
@@ -631,8 +875,7 @@
    · Categories: Name · Fruit/Veg · Car Brand · Animal · Place · Color
    · AUTO-CORRECT: typo-tolerant dictionary matching (Levenshtein)
    · SCORING: +10 per correct answer, −5 penalty per matching answer
-     (if two or more players give the same correct word, each loses 5
-      points per other player who matched them)
+   · ⭐ CALL CENTER MODE: customer calls pause the game (local)
    ========================================================= */
 
 const CATEGORIES = [
@@ -650,6 +893,12 @@ const CUT_SCENE_MS = 5500;
 const RULES_DURATION = 10;
 const STRICT_MODE = true;
 const DUP_PENALTY = 5;   /* points removed per matching other player */
+
+/* Call-centre tuning */
+const CALL_AUTO_CHANCE_PER_TICK = 0.18;   /* ~18% chance each 45s tick */
+const CALL_AUTO_TICK_MS = 45000;
+const CALL_AUTO_RESUME_MS = 20000;        /* auto-resume a simulated call after 20s */
+const CALL_MIN_ROUND_ELAPSED = 15;        /* don't trigger a call in the first 15s of a round */
 
 /* ===================== WORD DATABASE ===================== */
 const WORD_DB = {
@@ -922,6 +1171,11 @@ function shuffleArray(arr) {
   }
   return a;
 }
+function formatDuration(s) {
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  return `${m}:${String(r).padStart(2,'0')}`;
+}
 
 /* ===================== AUTO-CORRECT ENGINE ===================== */
 const DICT_INDEX = {};
@@ -1017,6 +1271,14 @@ let rulesInterval = null;
 let mySubmissionMade = false;
 let pickedAvatar = AVATARS[0];
 let pickedMode = 'host';
+
+/* ⭐ CALL CENTER STATE ⭐ */
+let onCall = false;
+let callStartTime = 0;
+let callTickInterval = null;
+let callAutoResumeTimer = null;
+let callAutoCheckInterval = null;
+let roundStartTime = 0;
 
 /* ===================== SIGN-IN UI ===================== */
 (function buildAvatars(){
@@ -1223,11 +1485,13 @@ function handleHostMessage(data) {
       enterGameScreen();
       break;
     case 'roundEnded':
+      if (onCall) endCustomerCall();
       room = data.room;
       renderGameUI();
       showCutScene();
       break;
     case 'nextRound':
+      if (onCall) endCustomerCall();
       room = data.room;
       hideCutScene();
       mySubmissionMade = false;
@@ -1235,6 +1499,7 @@ function handleHostMessage(data) {
       startRoundTimer();
       break;
     case 'gameOver':
+      if (onCall) endCustomerCall();
       room = data.room;
       hideCutScene();
       showGameOver();
@@ -1290,6 +1555,7 @@ $('copyLinkBtn').onclick = () => {
 };
 
 $('leaveLobbyBtn').onclick = () => {
+  if (onCall) endCustomerCall();
   if (peer) { peer.destroy(); peer = null; }
   hostConn = null; guestConns.clear(); room = null; me = null;
   showScreen('signin');
@@ -1420,9 +1686,14 @@ function startRoundTimer() {
   let t = ROUND_TIME;
   const timerEl = $('timerDisplay');
   timerEl.classList.remove('warn');
+  timerEl.classList.remove('paused');
   timerEl.textContent = t;
+  roundStartTime = Date.now();
 
   timerInterval = setInterval(() => {
+    /* ⭐ Customer call freezes the timer ⭐ */
+    if (onCall) return;
+
     t--;
     timerEl.textContent = t;
     if (t <= 10) timerEl.classList.add('warn');
@@ -1437,6 +1708,9 @@ function startRoundTimer() {
       }
     }
   }, 1000);
+
+  /* Start the random incoming-call ticker */
+  startCallAutoTicker();
 }
 
 /* ===================== SUBMIT ===================== */
@@ -1477,6 +1751,7 @@ function submitAnswers(auto) {
 function endRoundAsHost() {
   if (!me.isHost || !room || !room.started) return;
   clearInterval(timerInterval);
+  stopCallAutoTicker();
 
   /* --- Normalise every submission with the auto-correct engine --- */
   room.players.forEach(p => {
@@ -1566,7 +1841,7 @@ function computeMyRoundSummary() {
       pts = 10;
       const others = (dup[c.key]?.[cleanWord(raw)] || 1) - 1;
       if (others > 0) dupPenalty = others * DUP_PENALTY;
-      pts -= dupPenalty;                       /* ← subtract penalty */
+      pts -= dupPenalty;
     }
     total += pts;
 
@@ -1719,6 +1994,8 @@ function startNextRoundAsHost() {
 
 /* ===================== GAME OVER (winner screen) ===================== */
 function showGameOver() {
+  if (onCall) endCustomerCall();
+  stopCallAutoTicker();
   clearInterval(timerInterval);
   clearInterval(rulesInterval);
   hideCutScene();
@@ -1755,6 +2032,8 @@ function showGameOver() {
 
 /* ===================== LEAVE ===================== */
 $('leaveGameBtn').onclick = () => {
+  if (onCall) endCustomerCall();
+  stopCallAutoTicker();
   if (peer) { peer.destroy(); peer = null; }
   hostConn = null; guestConns.clear(); room = null; me = null;
   hideCutScene();
@@ -1768,9 +2047,121 @@ function showScreen(name) {
   ['signin','lobby','game'].forEach(s => {
     $('screen-'+s).classList.toggle('hidden', s !== name);
   });
+  /* Show the floating Customer Call button only during the game */
+  const btn = $('customerCallBtn');
+  if (btn) btn.style.display = (name === 'game') ? '' : 'none';
+  /* Leaving the game? End any active call. */
+  if (name !== 'game' && onCall) endCustomerCall();
 }
 function showConnBanner(text) { const b = $('connBanner'); b.style.display=''; b.textContent = text; }
 function hideConnBanner() { $('connBanner').style.display='none'; }
+
+/* =====================================================================
+   ⭐⭐  CALL CENTER MODE — customer calls pause the game  ⭐⭐
+   ===================================================================== */
+
+function triggerCustomerCall(source) {
+  if (onCall) return;
+  if (!room || !room.started) return;
+  if ($('screen-game').classList.contains('hidden')) return;
+  if (mySubmissionMade) return;
+
+  onCall = true;
+  callStartTime = Date.now();
+  clearTimeout(callAutoResumeTimer);
+
+  /* Disable inputs */
+  CATEGORIES.forEach(cat => {
+    const el = $(`in-${cat.key}`);
+    if (el) el.disabled = true;
+  });
+  $('submitBtn').disabled = true;
+
+  /* Pause visual on timer */
+  $('timerDisplay').classList.add('paused');
+
+  /* Show overlay */
+  const overlay = $('customerCallOverlay');
+  overlay.classList.add('show');
+
+  /* Set subtitle based on source */
+  const subtitle = overlay.querySelector('.call-subtitle');
+  if (source === 'auto') {
+    subtitle.textContent = 'Simulated incoming call — attend to the client.';
+    /* Simulated calls auto-resume after a short handling time */
+    callAutoResumeTimer = setTimeout(() => {
+      if (onCall) endCustomerCall();
+    }, CALL_AUTO_RESUME_MS);
+  } else {
+    subtitle.textContent = 'Attend to the client — the game is paused.';
+  }
+
+  /* Reset elapsed display */
+  const elapsedEl = overlay.querySelector('.call-elapsed');
+  if (elapsedEl) elapsedEl.textContent = '0:00';
+
+  /* Toast */
+  toast(source === 'auto'
+    ? '📞 Incoming call — attend to the client!'
+    : '📞 Customer call — attend to the client!', 2200);
+
+  /* Live elapsed ticker */
+  clearInterval(callTickInterval);
+  callTickInterval = setInterval(() => {
+    const secs = Math.floor((Date.now() - callStartTime) / 1000);
+    if (elapsedEl) elapsedEl.textContent = formatDuration(secs);
+  }, 500);
+}
+
+function endCustomerCall() {
+  if (!onCall) return;
+  onCall = false;
+  clearInterval(callTickInterval);
+  clearTimeout(callAutoResumeTimer);
+
+  /* Hide overlay */
+  $('customerCallOverlay').classList.remove('show');
+  $('timerDisplay').classList.remove('paused');
+
+  /* Re-enable inputs if the round is still live and we haven't submitted */
+  if (!mySubmissionMade && room && room.started && !$('screen-game').classList.contains('hidden')) {
+    CATEGORIES.forEach(cat => {
+      const el = $(`in-${cat.key}`);
+      if (el) el.disabled = false;
+    });
+    $('submitBtn').disabled = false;
+  }
+
+  const secs = Math.floor((Date.now() - callStartTime) / 1000);
+  toast(`✅ Client handled (${formatDuration(secs)}) — back to the game`, 2200);
+}
+
+/* Manual trigger button */
+$('customerCallBtn').addEventListener('click', () => triggerCustomerCall('manual'));
+
+/* Resume button inside the overlay */
+$('resumeFromCallBtn').addEventListener('click', () => endCustomerCall());
+
+/* ---------- Random incoming-call ticker ---------- */
+function startCallAutoTicker() {
+  stopCallAutoTicker();
+  callAutoCheckInterval = setInterval(() => {
+    if (!room || !room.started) return;
+    if (onCall) return;
+    if (mySubmissionMade) return;
+    if ($('screen-game').classList.contains('hidden')) return;
+    /* Only after the round has been going for a bit */
+    if (Date.now() - roundStartTime < CALL_MIN_ROUND_ELAPSED * 1000) return;
+    /* Probabilistic trigger */
+    if (Math.random() < CALL_AUTO_CHANCE_PER_TICK) {
+      triggerCustomerCall('auto');
+    }
+  }, CALL_AUTO_TICK_MS);
+}
+function stopCallAutoTicker() {
+  clearInterval(callAutoCheckInterval);
+  callAutoCheckInterval = null;
+}
 
 /* ===================== AUTO-JOIN VIA URL ?room=CODE ===================== */
 (function autoFillRoomFromURL(){
