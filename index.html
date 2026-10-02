@@ -431,7 +431,7 @@
 
   /* ============ CUSTOMER CALL (CALL CENTER MODE) ============ */
 
-  /* Floating call button — only visible during game */
+  /* Floating call button — visible during game */
   .call-btn {
     position: fixed;
     bottom: 1.5rem;
@@ -564,8 +564,20 @@
     color: #fca5a5;
     opacity: 0.78;
     font-size: 0.92rem;
-    margin-bottom: 1.4rem;
+    margin-bottom: 1.2rem;
     line-height: 1.5;
+  }
+  .call-source {
+    color: #fca5a5;
+    font-size: 0.8rem;
+    opacity: 0.7;
+    margin-bottom: 1.3rem;
+    letter-spacing: 0.5px;
+  }
+  .call-source strong {
+    color: #fff;
+    font-weight: 800;
+    letter-spacing: 0.8px;
   }
   .call-elapsed-wrap {
     display: inline-block;
@@ -748,7 +760,8 @@
       <div class="call-icon">📞</div>
     </div>
     <div class="call-title">Customer Call</div>
-    <div class="call-subtitle">Attend to the client — the game is paused.</div>
+    <div class="call-subtitle">Attend to the client — the game is paused for everyone.</div>
+    <div class="call-source" id="callSourceLine">Triggered by <strong>—</strong></div>
     <div class="call-elapsed-wrap">
       <span class="call-elapsed-label">On call for</span>
       <span class="call-elapsed">0:00</span>
@@ -756,7 +769,7 @@
     <button class="call-btn-resume" id="resumeFromCallBtn">
       ✅ Client handled · Resume Game
     </button>
-    <p class="call-hint">Your timer is <em>frozen</em> while you're on the call. Take your time.</p>
+    <p class="call-hint">Your timer is <em>frozen</em> for all players while you're on the call.</p>
   </div>
 </div>
 
@@ -772,7 +785,7 @@
         <span class="rule-emoji">📞</span>
         <div>
           <strong>Customer calls always come first</strong>
-          <p>This game is designed for <em>call center teams</em>. When a customer calls, hit the red <em>Customer Call</em> button (bottom-right). The game <em>pauses</em>, your timer <em>freezes</em>, and inputs lock. Handle the client, then click <em>Resume Game</em>. Calls may also ring in <em>automatically</em> — just attend and come back.</p>
+          <p>This game is designed for <em>call center teams</em>. When a customer calls, hit the red <em>Customer Call</em> button (bottom-right). The game pauses for <em>everyone</em>, all timers <em>freeze</em>, and inputs lock. Handle the client, then click <em>Resume Game</em> to bring everyone back.</p>
         </div>
       </div>
 
@@ -875,7 +888,7 @@
    · Categories: Name · Fruit/Veg · Car Brand · Animal · Place · Color
    · AUTO-CORRECT: typo-tolerant dictionary matching (Levenshtein)
    · SCORING: +10 per correct answer, −5 penalty per matching answer
-   · ⭐ CALL CENTER MODE: customer calls pause the game (local)
+   · ⭐ CALL CENTER MODE: anyone can trigger a pause — synced to ALL players
    ========================================================= */
 
 const CATEGORIES = [
@@ -893,12 +906,6 @@ const CUT_SCENE_MS = 5500;
 const RULES_DURATION = 10;
 const STRICT_MODE = true;
 const DUP_PENALTY = 5;   /* points removed per matching other player */
-
-/* Call-centre tuning */
-const CALL_AUTO_CHANCE_PER_TICK = 0.18;   /* ~18% chance each 45s tick */
-const CALL_AUTO_TICK_MS = 45000;
-const CALL_AUTO_RESUME_MS = 20000;        /* auto-resume a simulated call after 20s */
-const CALL_MIN_ROUND_ELAPSED = 15;        /* don't trigger a call in the first 15s of a round */
 
 /* ===================== WORD DATABASE ===================== */
 const WORD_DB = {
@@ -1273,12 +1280,11 @@ let pickedAvatar = AVATARS[0];
 let pickedMode = 'host';
 
 /* ⭐ CALL CENTER STATE ⭐ */
-let onCall = false;
+let onCall = false;                    /* local: is the overlay showing? */
 let callStartTime = 0;
 let callTickInterval = null;
-let callAutoResumeTimer = null;
-let callAutoCheckInterval = null;
-let roundStartTime = 0;
+let pausedBy = null;                   /* who triggered the current pause */
+let lastTimerValue = ROUND_TIME;       /* remembers where we paused */
 
 /* ===================== SIGN-IN UI ===================== */
 (function buildAvatars(){
@@ -1333,7 +1339,9 @@ function hostRoom() {
       letter: null,
       players: [{ id: me.id, name: me.name, avatar: me.avatar }],
       scores: { [me.id]: 0 },
-      submissions: {}
+      submissions: {},
+      paused: false,
+      pausedBy: null
     };
 
     showConnBanner('Opening room…');
@@ -1456,6 +1464,16 @@ function handleGuestMessage(conn, data) {
       room.submissions[data.playerId] = data.answers;
       break;
     }
+
+    /* ⭐ CALL CENTER — guest requests a pause / resume, host decides ⭐ */
+    case 'customerCallRequest': {
+      if (!room.paused) hostTriggerCall(data.playerName || 'A player');
+      break;
+    }
+    case 'customerCallEndRequest': {
+      if (room.paused) hostEndCall();
+      break;
+    }
   }
 }
 
@@ -1485,13 +1503,13 @@ function handleHostMessage(data) {
       enterGameScreen();
       break;
     case 'roundEnded':
-      if (onCall) endCustomerCall();
+      if (onCall) hideCallOverlay();
       room = data.room;
       renderGameUI();
       showCutScene();
       break;
     case 'nextRound':
-      if (onCall) endCustomerCall();
+      if (onCall) hideCallOverlay();
       room = data.room;
       hideCutScene();
       mySubmissionMade = false;
@@ -1499,10 +1517,18 @@ function handleHostMessage(data) {
       startRoundTimer();
       break;
     case 'gameOver':
-      if (onCall) endCustomerCall();
+      if (onCall) hideCallOverlay();
       room = data.room;
       hideCutScene();
       showGameOver();
+      break;
+
+    /* ⭐ CALL CENTER — host broadcasts pause/resume to all guests ⭐ */
+    case 'callStarted':
+      showCallOverlay(data.pausedBy);
+      break;
+    case 'callEnded':
+      hideCallOverlay();
       break;
   }
 }
@@ -1555,7 +1581,7 @@ $('copyLinkBtn').onclick = () => {
 };
 
 $('leaveLobbyBtn').onclick = () => {
-  if (onCall) endCustomerCall();
+  if (onCall) hideCallOverlay();
   if (peer) { peer.destroy(); peer = null; }
   hostConn = null; guestConns.clear(); room = null; me = null;
   showScreen('signin');
@@ -1684,17 +1710,18 @@ function renderLeaderboard() {
 function startRoundTimer() {
   clearInterval(timerInterval);
   let t = ROUND_TIME;
+  lastTimerValue = t;
   const timerEl = $('timerDisplay');
   timerEl.classList.remove('warn');
   timerEl.classList.remove('paused');
   timerEl.textContent = t;
-  roundStartTime = Date.now();
 
   timerInterval = setInterval(() => {
-    /* ⭐ Customer call freezes the timer ⭐ */
+    /* ⭐ If a customer call is active for anyone, pause for everyone ⭐ */
     if (onCall) return;
 
     t--;
+    lastTimerValue = t;
     timerEl.textContent = t;
     if (t <= 10) timerEl.classList.add('warn');
 
@@ -1708,9 +1735,6 @@ function startRoundTimer() {
       }
     }
   }, 1000);
-
-  /* Start the random incoming-call ticker */
-  startCallAutoTicker();
 }
 
 /* ===================== SUBMIT ===================== */
@@ -1751,7 +1775,6 @@ function submitAnswers(auto) {
 function endRoundAsHost() {
   if (!me.isHost || !room || !room.started) return;
   clearInterval(timerInterval);
-  stopCallAutoTicker();
 
   /* --- Normalise every submission with the auto-correct engine --- */
   room.players.forEach(p => {
@@ -1994,8 +2017,7 @@ function startNextRoundAsHost() {
 
 /* ===================== GAME OVER (winner screen) ===================== */
 function showGameOver() {
-  if (onCall) endCustomerCall();
-  stopCallAutoTicker();
+  if (onCall) hideCallOverlay();
   clearInterval(timerInterval);
   clearInterval(rulesInterval);
   hideCutScene();
@@ -2032,8 +2054,7 @@ function showGameOver() {
 
 /* ===================== LEAVE ===================== */
 $('leaveGameBtn').onclick = () => {
-  if (onCall) endCustomerCall();
-  stopCallAutoTicker();
+  if (onCall) hideCallOverlay();
   if (peer) { peer.destroy(); peer = null; }
   hostConn = null; guestConns.clear(); room = null; me = null;
   hideCutScene();
@@ -2050,25 +2071,49 @@ function showScreen(name) {
   /* Show the floating Customer Call button only during the game */
   const btn = $('customerCallBtn');
   if (btn) btn.style.display = (name === 'game') ? '' : 'none';
-  /* Leaving the game? End any active call. */
-  if (name !== 'game' && onCall) endCustomerCall();
+  /* Leaving the game? Hide any active call overlay. */
+  if (name !== 'game' && onCall) hideCallOverlay();
 }
 function showConnBanner(text) { const b = $('connBanner'); b.style.display=''; b.textContent = text; }
 function hideConnBanner() { $('connBanner').style.display='none'; }
 
 /* =====================================================================
-   ⭐⭐  CALL CENTER MODE — customer calls pause the game  ⭐⭐
+   ⭐⭐  CALL CENTER MODE  ⭐⭐
+   · Anyone can trigger a pause — the HOST relays it to ALL players.
+   · No automatic/simulated calls.
+   · Timers on every client freeze while the pause is active.
    ===================================================================== */
 
-function triggerCustomerCall(source) {
-  if (onCall) return;
-  if (!room || !room.started) return;
-  if ($('screen-game').classList.contains('hidden')) return;
-  if (mySubmissionMade) return;
+/* ---- Host-side authoritative actions ---- */
+function hostTriggerCall(sourceName) {
+  if (!me.isHost || !room) return;
+  if (room.paused) return;
+  room.paused = true;
+  room.pausedBy = sourceName || me.name;
+  broadcastToGuests({ type: 'callStarted', pausedBy: room.pausedBy });
+  showCallOverlay(room.pausedBy);
+}
 
+function hostEndCall() {
+  if (!me.isHost || !room) return;
+  if (!room.paused) return;
+  room.paused = false;
+  room.pausedBy = null;
+  broadcastToGuests({ type: 'callEnded' });
+  hideCallOverlay();
+}
+
+/* ---- Local overlay helpers (used by both host and guests) ---- */
+function showCallOverlay(source) {
+  if (onCall) {
+    /* Already showing — just update the source line */
+    const line = $('callSourceLine');
+    if (line) line.innerHTML = `Triggered by <strong>${escapeHtml(source || '—')}</strong>`;
+    return;
+  }
   onCall = true;
+  pausedBy = source || null;
   callStartTime = Date.now();
-  clearTimeout(callAutoResumeTimer);
 
   /* Disable inputs */
   CATEGORIES.forEach(cat => {
@@ -2077,33 +2122,20 @@ function triggerCustomerCall(source) {
   });
   $('submitBtn').disabled = true;
 
-  /* Pause visual on timer */
+  /* Grey out timer */
   $('timerDisplay').classList.add('paused');
 
-  /* Show overlay */
-  const overlay = $('customerCallOverlay');
-  overlay.classList.add('show');
-
-  /* Set subtitle based on source */
-  const subtitle = overlay.querySelector('.call-subtitle');
-  if (source === 'auto') {
-    subtitle.textContent = 'Simulated incoming call — attend to the client.';
-    /* Simulated calls auto-resume after a short handling time */
-    callAutoResumeTimer = setTimeout(() => {
-      if (onCall) endCustomerCall();
-    }, CALL_AUTO_RESUME_MS);
-  } else {
-    subtitle.textContent = 'Attend to the client — the game is paused.';
-  }
-
-  /* Reset elapsed display */
-  const elapsedEl = overlay.querySelector('.call-elapsed');
+  /* Update source line + reset elapsed */
+  const line = $('callSourceLine');
+  if (line) line.innerHTML = `Triggered by <strong>${escapeHtml(source || '—')}</strong>`;
+  const elapsedEl = $('customerCallOverlay').querySelector('.call-elapsed');
   if (elapsedEl) elapsedEl.textContent = '0:00';
 
+  /* Show overlay */
+  $('customerCallOverlay').classList.add('show');
+
   /* Toast */
-  toast(source === 'auto'
-    ? '📞 Incoming call — attend to the client!'
-    : '📞 Customer call — attend to the client!', 2200);
+  toast(`📞 Customer call — triggered by ${source || 'someone'}`, 2200);
 
   /* Live elapsed ticker */
   clearInterval(callTickInterval);
@@ -2113,11 +2145,11 @@ function triggerCustomerCall(source) {
   }, 500);
 }
 
-function endCustomerCall() {
+function hideCallOverlay() {
   if (!onCall) return;
   onCall = false;
+  pausedBy = null;
   clearInterval(callTickInterval);
-  clearTimeout(callAutoResumeTimer);
 
   /* Hide overlay */
   $('customerCallOverlay').classList.remove('show');
@@ -2136,32 +2168,31 @@ function endCustomerCall() {
   toast(`✅ Client handled (${formatDuration(secs)}) — back to the game`, 2200);
 }
 
-/* Manual trigger button */
-$('customerCallBtn').addEventListener('click', () => triggerCustomerCall('manual'));
+/* ---- Trigger button ---- */
+$('customerCallBtn').addEventListener('click', () => {
+  /* Only during a live round */
+  if (!room || !room.started) return;
+  if ($('screen-game').classList.contains('hidden')) return;
+  if (onCall) return;               /* already paused */
 
-/* Resume button inside the overlay */
-$('resumeFromCallBtn').addEventListener('click', () => endCustomerCall());
+  if (me.isHost) {
+    hostTriggerCall(me.name);
+  } else {
+    /* Ask host to trigger the pause for everyone */
+    hostConn.send({ type: 'customerCallRequest', playerName: me.name });
+  }
+});
 
-/* ---------- Random incoming-call ticker ---------- */
-function startCallAutoTicker() {
-  stopCallAutoTicker();
-  callAutoCheckInterval = setInterval(() => {
-    if (!room || !room.started) return;
-    if (onCall) return;
-    if (mySubmissionMade) return;
-    if ($('screen-game').classList.contains('hidden')) return;
-    /* Only after the round has been going for a bit */
-    if (Date.now() - roundStartTime < CALL_MIN_ROUND_ELAPSED * 1000) return;
-    /* Probabilistic trigger */
-    if (Math.random() < CALL_AUTO_CHANCE_PER_TICK) {
-      triggerCustomerCall('auto');
-    }
-  }, CALL_AUTO_TICK_MS);
-}
-function stopCallAutoTicker() {
-  clearInterval(callAutoCheckInterval);
-  callAutoCheckInterval = null;
-}
+/* ---- Resume button ---- */
+$('resumeFromCallBtn').addEventListener('click', () => {
+  if (!onCall) return;
+
+  if (me.isHost) {
+    hostEndCall();
+  } else {
+    hostConn.send({ type: 'customerCallEndRequest' });
+  }
+});
 
 /* ===================== AUTO-JOIN VIA URL ?room=CODE ===================== */
 (function autoFillRoomFromURL(){
